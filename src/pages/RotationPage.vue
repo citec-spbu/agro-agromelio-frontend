@@ -1,6 +1,6 @@
 <template>
   <div class="q-pa-md contour-info-container">
-    <div class="text-h6 font-bold">Добавление севооборота в контуре</div>
+    <div class="text-h6 font-bold">Информация о контуре</div>
     <div class="q-mt-md q-gutter-y-xs">
       <div class="info-item row">
         <span class="label col-auto text-subtitle1 font-bold">Сезон:</span>
@@ -105,7 +105,7 @@
                     color="primary"
                     size="md"
                     class="cursor-pointer"
-                    @click="editSoilInfo(getSoilInfoById(column.name))"
+                    @click="editSoilInfo(column.name)"
                   />
                 </q-td>
               </q-tr>
@@ -228,22 +228,6 @@ export default {
         startDate: "2024-03-01",
         endDate: "2024-06-15",
         description: "Высокое качество зерна, урожай 2024"
-      },
-      {
-        id: "3fa85f64-5717-4562-b3fc-2c963f66afa7",
-        culture: "Кукуруза",
-        cultivar: "Сорт B",
-        startDate: "2024-07-01",
-        endDate: "2024-10-10",
-        description: "Кукуруза для корма"
-      },
-      {
-        id: "3fa85f64-5717-4562-b3fc-2c963f66afa8",
-        culture: "Овёс",
-        cultivar: "Сорт C",
-        startDate: "2024-10-20",
-        endDate: "2025-01-15",
-        description: "Овёс для животноводства"
       }
     ];
 
@@ -265,114 +249,6 @@ export default {
         co: "0.1 ppm",
         mn: "50 ppm",
         zn: "2 ppm"
-      },
-      {
-        id: "2b3c4d5e-6789-01ab-cdef-2345678901bc",
-        ph: "6.8",
-        sampleDate: "2024-11-22",
-        organicMatter: "3.0%",
-        mobileP: "12 ppm",
-        mobileK: "115 ppm",
-        mobileS: "8 ppm",
-        nitrateN: "6 ppm",
-        ammoniumN: "4 ppm",
-        hydrolyticAcidity: "4.7",
-        caExchange: "18 meq/100g",
-        mgExchange: "6 meq/100g",
-        b: "0.25 ppm",
-        co: "0.15 ppm",
-        mn: "45 ppm",
-        zn: "1.8 ppm"
-      },
-      {
-        id: "3c4d5e6f-7890-12ab-cdef-3456789012cd",
-        ph: "7.0",
-        sampleDate: "2024-11-24",
-        organicMatter: "2.8%",
-        mobileP: "10 ppm",
-        mobileK: "100 ppm",
-        mobileS: "12 ppm",
-        nitrateN: "4 ppm",
-        ammoniumN: "2 ppm",
-        hydrolyticAcidity: "4.5",
-        caExchange: "22 meq/100g",
-        mgExchange: "7 meq/100g",
-        b: "0.3 ppm",
-        co: "0.2 ppm",
-        mn: "40 ppm",
-        zn: "1.5 ppm"
-      },
-      {
-        id: "3c3d5e6f-7890-12ab-cdef-3456789012cd",
-        ph: "7.0",
-        sampleDate: "2024-11-26",
-        organicMatter: "2.8%",
-        mobileP: "10 ppm",
-        mobileK: "100 ppm",
-        mobileS: "12 ppm",
-        nitrateN: "4 ppm",
-        ammoniumN: "2 ppm",
-        hydrolyticAcidity: "4.5",
-        caExchange: "22 meq/100g",
-        mgExchange: "7 meq/100g",
-        b: "0.3 ppm",
-        co: "0.2 ppm",
-        mn: "40 ppm",
-        zn: "1.5 ppm"
-      },
-      {
-        id: "3c4d5e6f-7890-00ab-cdef-3456789012cd",
-        ph: "7.0",
-        sampleDate: "2024-11-27",
-        organicMatter: "2.8%",
-        mobileP: "10 ppm",
-        mobileK: "100 ppm",
-        mobileS: "12 ppm",
-        nitrateN: "4 ppm",
-        ammoniumN: "2 ppm",
-        hydrolyticAcidity: "4.5",
-        caExchange: "22 meq/100g",
-        mgExchange: "7 meq/100g",
-        b: "0.3 ppm",
-        co: "0.2 ppm",
-        mn: "40 ppm",
-        zn: "1.5 ppm"
-      },
-      {
-        id: "3c4d5e6f-7890-12ab-cdef-3412389012cd",
-        ph: "7.0",
-        sampleDate: "2024-11-29",
-        organicMatter: "2.8%",
-        mobileP: "10 ppm",
-        mobileK: "100 ppm",
-        mobileS: "12 ppm",
-        nitrateN: "4 ppm",
-        ammoniumN: "2 ppm",
-        hydrolyticAcidity: "4.5",
-        caExchange: "22 meq/100g",
-        mgExchange: "7 meq/100g",
-        b: "0.3 ppm",
-        co: "0.2 ppm",
-        mn: "40 ppm",
-        zn: "1.5 ppm"
-      },
-      {
-        id: "3c4d5e6f-7890-12ab-cdef-3412119012cd",
-        ph: "7.0",
-        sampleDate: "2024-12-29",
-        organicMatter: "2.8%",
-        mobileP: "10 ppm",
-        mobileK: "100 ppm",
-        mobileS: "12 ppm",
-        nitrateN: "4 ppm",
-        ammoniumN: "2 ppm",
-        hydrolyticAcidity: "4.5",
-        caExchange: "22 meq/100g",
-        mgExchange: "7 meq/100g",
-        b: "0.3 ppm",
-        co: "0.2 ppm",
-        mn: "40 ppm",
-        zn: "1.5 ppm"
       }
     ];
 
@@ -474,62 +350,28 @@ export default {
           message: 'Failed to load soil data. Please try again later.',
           icon: 'error',
         });
-    
-        const sortedData = [...fakeSoilData].sort((a, b) => 
-          new Date(a.sampleDate) - new Date(b.sampleDate)
-        );
-    
-        const dataColumns = sortedData.map(item => ({
-          name: item.id,
-          label: item.sampleDate,
-          align: 'center',
-          field: item.id,
-          sortable: true
-        }));
-    
-        soilColumns.value = [
-          { name: 'parameter', label: 'Параметр', align: 'left', field: 'parameter', sortable: false },
-          ...dataColumns
-        ];
-    
-        soilData.value = soilParameters.map(param => {
-          const row = { parameter: param.name };
-          sortedData.forEach(item => {
-            row[item.id] = item[param.key] || '—';
-          });
-          return row;
-        });
-    
-        soilData.value.push({ parameter: 'edit' });
-        soilData.value.push({ parameter: 'delete' });
       }
     };
 
     const getSoilInfoById = (id) => {
-      const soilInfo = fakeSoilData.find(item => item.id === id);
-      if (!soilInfo) {
+      console.log('Searching for soil data with ID:', id);
+      const soilInfo = soilParameters.reduce((info, param) => {
+        const row = soilData.value.find(row => row.parameter === param.name);
+        if (row && row[id]) {
+          info[param.key] = row[id];
+        }
+        return info;
+      }, { id });
+
+      if (!Object.keys(soilInfo).length) {
         console.error(`No soil data found for id: ${id}`);
         return null;
       }
-      return {
-        id: soilInfo.id,
-        ph: soilInfo.ph,
-        sampleDate: soilInfo.sampleDate,
-        organicMatter: soilInfo.organicMatter,
-        mobileP: soilInfo.mobileP,
-        mobileK: soilInfo.mobileK,
-        mobileS: soilInfo.mobileS,
-        nitrateN: soilInfo.nitrateN,
-        ammoniumN: soilInfo.ammoniumN,
-        hydrolyticAcidity: soilInfo.hydrolyticAcidity,
-        caExchange: soilInfo.caExchange,
-        mgExchange: soilInfo.mgExchange,
-        b: soilInfo.b,
-        co: soilInfo.co,
-        mn: soilInfo.mn,
-        zn: soilInfo.zn
-      };
+
+      console.log('Found soil data:', soilInfo);
+      return soilInfo;
     };
+
 
     const confirmDelete = (itemId, itemType = 'cropRotation') => {
       deleteType.value = itemType; 
@@ -545,9 +387,9 @@ export default {
     const deleteItem = async () => {
       try {
         if (deleteType.value === 'cropRotation') {
-          const cropRotationId = selectedCropRotationId.value;
+          const id = selectedCropRotationId.value;
           const response = await axios.delete(`${process.env.VUE_APP_BASE_URL}/api/fields-service/crop-rotation`, {
-            params: { cropRotationId },
+            params: { id },
             headers: {
               Authorization: `Bearer ${accessToken.value}`,
               'Content-Type': 'application/json',
@@ -566,9 +408,9 @@ export default {
           }
         } else if (deleteType.value === 'soilComposition') {
 
-          const soilCompositionId = selectedSoilInfoId.value;
+          const id = selectedSoilInfoId.value;
           const response = await axios.delete(`${process.env.VUE_APP_BASE_URL}/api/fields-service/soil-composition`, {
-            params: { soilCompositionId },
+            params: { id },
             headers: {
               Authorization: `Bearer ${accessToken.value}`,
               'Content-Type': 'application/json',
@@ -581,6 +423,12 @@ export default {
               message: 'Информация о почве успешно удалена!',
               icon: 'check_circle',
             });
+            if (soilColumns.value.length === 2) {
+              console.log('---------------------No more soil data found. Reloading the page.-----------------------');
+              // 刷新整个页面
+              window.location.reload();
+              return;
+            }
             await fetchSoilData(); 
           } else {
             throw new Error('Failed to delete soil composition.');
@@ -601,9 +449,14 @@ export default {
       }
     };
 
-    const editSoilInfo = (soilInfo) => {
+    const editSoilInfo = (id) => {
+      const soilInfo = getSoilInfoById(id); // 根据 id 查找 soil 数据
       if (!soilInfo) {
-        console.error("Invalid soil information object");
+        $q.notify({
+          type: 'negative',
+          message: 'No soil data found for the selected ID.',
+          icon: 'error',
+        });
         return;
       }
 
@@ -611,7 +464,9 @@ export default {
         name: 'add_soil', 
         query: {
           contourId: contourInfo.value.contourId, 
+          seasonId: contourInfo.value.seasonId,
           seasonName: contourInfo.value.seasonName, 
+          fieldId: contourInfo.value.fieldId,
           fieldName: contourInfo.value.fieldName, 
           contourName: contourInfo.value.contourName, 
           soilInfoId: soilInfo.id, 
@@ -639,9 +494,11 @@ export default {
         name: 'add_rotation',
         query: {
           contourId: contourInfo.value.contourId,
-          seasonName: contourInfo.value.seasonName,
-          fieldName: contourInfo.value.fieldName,
           contourName: contourInfo.value.contourName,
+          seasonId: contourInfo.value.seasonId,
+          seasonName: contourInfo.value.seasonName,
+          fieldId: contourInfo.value.fieldId,
+          fieldName: contourInfo.value.fieldName,
           cropRotationId: cropRotation.cropRotationId,
           culture: cropRotation.culture,
           cultivar: cropRotation.cultivar,
@@ -662,7 +519,9 @@ export default {
         name: 'add_rotation',
         query: {
           contourId: contourInfo.value.contourId,
+          seasonId: contourInfo.value.seasonId,
           seasonName: contourInfo.value.seasonName,
+          fieldId: contourInfo.value.fieldId,
           fieldName: contourInfo.value.fieldName,
           contourName: contourInfo.value.contourName
         }
@@ -674,7 +533,9 @@ export default {
         name: 'add_soil', 
         query: {
           contourId: contourInfo.value.contourId, 
+          seasonId: contourInfo.value.seasonId,
           seasonName: contourInfo.value.seasonName, 
+          fieldId: contourInfo.value.fieldId,
           fieldName: contourInfo.value.fieldName, 
           contourName: contourInfo.value.contourName
         }
@@ -752,17 +613,21 @@ html, body {
   margin-top: 16px;
 }
 
-
 .button-common {
-  width: 200px; 
+  width: auto;
+  max-width: 300px;
   background-color: #2e2e2e; 
   color: #fff; 
-  font-size: 1.1rem; 
+  font-size: 1rem;
+  padding: 8px 16px;
   border-radius: 8px; 
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
   text-transform: none;
+  white-space: normal;
+  text-align: center; 
+  line-height: 1.5; 
+  word-wrap: break-word; 
 }
-
 
 .table-scroll-container {
   overflow-x: auto; 

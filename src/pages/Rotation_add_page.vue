@@ -5,15 +5,15 @@
     <div class="q-mt-md q-gutter-y-xs info-section">
       <div class="info-item row">
         <span class="label col-auto text-subtitle1 font-bold">Сезон:</span>
-        <span class="value col text-subtitle1">{{ season }}</span>
+        <span class="value col text-subtitle1">{{ seasonName }}</span>
       </div>
       <div class="info-item row">
         <span class="label col-auto text-subtitle1 font-bold">Поле:</span>
-        <span class="value col text-subtitle1">{{ field }}</span>
+        <span class="value col text-subtitle1">{{ fieldName }}</span>
       </div>
       <div class="info-item row">
         <span class="label col-auto text-subtitle1 font-bold">Контур:</span>
-        <span class="value col text-subtitle1">{{ contour }}</span>
+        <span class="value col text-subtitle1">{{ contourName }}</span>
       </div>
     </div>
 
@@ -49,9 +49,11 @@ export default {
     const router = useRouter();
     const accessToken = computed(() => userStore.state.access_token);
     
-    const season = ref(route.query.seasonName || '');
-    const field = ref(route.query.fieldName || '');
-    const contour = ref(route.query.contourName || '');
+    const seasonName = ref(route.query.seasonName || '');
+    const seasonId = ref(route.query.seasonId);
+    const fieldName = ref(route.query.fieldName || '');
+    const fieldId = ref(route.query.fieldId);
+    const contourName = ref(route.query.contourName || '');
     const contourId = ref(route.query.contourId);
 
     const isEditMode = ref(!!route.query.cropRotationId);
@@ -92,7 +94,7 @@ export default {
       try {
         if (isEditMode.value) {
           await axios.put(`${apiUrl}/crop-rotation`, payload, {
-            params: { cropRotationId: cropRotationId.value },
+            params: { id: cropRotationId.value },
             headers: {
               Authorization: `Bearer ${accessToken.value}`,
               'Content-Type': 'application/json'
@@ -116,7 +118,17 @@ export default {
             icon: 'check_circle'
           });
         }
-        router.push({ name: 'RotationPage' }); 
+        router.push({ 
+          name: 'RotationPage' ,
+          query: {
+            fieldId: fieldId.value,
+            fieldName: fieldName.value,
+            seasonId: seasonId.value,
+            seasonName: seasonName.value,
+            contourName: contourName.value,
+            contourId: contourId.value
+          }
+        }); 
       } catch (error) {
         console.error('Ошибка при сохранении данных:', error);
         $q.notify({
@@ -128,9 +140,12 @@ export default {
     };
 
     return {
-      season,
-      field,
-      contour,
+      seasonName,
+      seasonId,
+      fieldName,
+      fieldId,
+      contourName,
+      contourId,
       formData,
       isEditMode,
       fileInput,

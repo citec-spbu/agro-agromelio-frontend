@@ -125,8 +125,18 @@ export default {
         )}&contourName=${encodeURIComponent(contour.name)}`
       );
     };
-    const handleFieldPopupClick = (fieldId) => {
-      router.push(`/field_weather_info?fieldId=${fieldId}`);
+    const handleFieldPopupClick = (contour) => {
+      router.push({
+        name: 'FieldWeatherInfoPage', 
+        query: {
+          seasonId: selectedSeason.value.id,
+          seasonName: selectedSeason.value.name,
+          fieldId: selectedField.value.id,
+          fieldName: selectedField.value.name,
+          contourId: contour.id,
+          contourName: contour.name
+        }
+      });
     };
 
     const clearPolygons = () => {

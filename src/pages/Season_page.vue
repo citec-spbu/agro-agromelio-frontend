@@ -6,25 +6,21 @@
           <div class="text-h6">Севооборот</div>
         </q-card-section>
         <q-card-section>
-          <div class="row justify-between items-center">
-            <q-select
-              v-model="OnSeason"
-              label="Выбор сезона"
-              :options="seasons"
-              option-value="value"
-              option-label="label"
-              dense
-              outlined
-              class="season-select"
-              @update:model-value="fetchFields"
-            />
-            <q-btn
-              icon="add"
-              label="Добавить сезон"
-              color="primary"
-              class="add-season-btn button-common"
-              @click="navigateToAddSeason"
-            />
+
+          <div class="row items-center no-wrap" style="width: 100%;">
+            <div class="col-auto">
+              <q-select
+                v-model="OnSeason"
+                label="Выбор сезона"
+                :options="seasons"
+                option-value="value"
+                option-label="label"
+                dense
+                outlined
+                class="season-select"
+                @update:model-value="fetchFields"
+              />
+            </div>
           </div>
         </q-card-section>
       </q-card>
@@ -43,10 +39,11 @@
               row-key="contourId"
               class="fixed-table"
             >
-
               <template v-slot:body-cell-fieldName="props">
                 <q-td :props="props" class="field-name-cell">
-                  {{ props.row.fieldName }}
+                  <div :style="{ visibility: props.row.contourId === firstContourId(props.row.fieldId) ? 'visible' : 'hidden' }">
+                    {{ props.row.fieldName }}
+                  </div>
                 </q-td>
               </template>
 
@@ -78,7 +75,7 @@
                         <span class="timeline-dot"></span>
                         <span
                           class="timeline-line"
-                          :style="{ width: calculateTimelineWidth(crop.startDate, crop.endDate) }"
+                          :style="{ width: '200px' }"
                         ></span>
                         <span class="timeline-dot"></span>
                         <span class="timeline-date right">{{ formatDate(crop.endDate) }}</span>
@@ -94,8 +91,6 @@
     </div>
   </q-page>
 </template>
-
-
 
 <script>
 import { ref, onMounted, computed } from 'vue';
@@ -121,201 +116,6 @@ export default {
       { name: 'cropRotations', label: 'Посевы', align: 'center', field: 'cropRotations'}
     ];
 
-    // fake data
-    const fakeData = [
-      {
-        id: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-        name: "Поле 1",
-        description: "Описание поля 1",
-        contours: [
-          {
-            name: "Контур 1",
-            color: "d1E6dF",
-            id: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            squareArea: "10",
-            cropRotations: [
-              {
-                id: "1",
-                culture: "Культура 1",
-                cultivar: "Сорт 1",
-                startDate: "2024-07-01",
-                endDate: "2024-07-21",
-                description: "Описание 1"
-              },
-              {
-                id: "2",
-                culture: "Культура 2",
-                cultivar: "Сорт 2",
-                startDate: "2024-07-22",
-                endDate: "2024-12-30",
-                description: "Описание 2"
-              }
-            ]
-          },
-          {
-            name: "Контур 2",
-            color: "A1B2C3",
-            id: "3fa85f64-5717-4562-b3fc-2c963f66afa7",
-            squareArea: "20",
-            cropRotations: [
-              {
-                id: "3",
-                culture: "Культура 3",
-                cultivar: "Сорт 3",
-                startDate: "2024-08-01",
-                endDate: "2024-08-15",
-                description: "Описание 3"
-              },
-              {
-                id: "4",
-                culture: "Культура 4",
-                cultivar: "Сорт 4",
-                startDate: "2024-08-16",
-                endDate: "2024-08-31",
-                description: "Описание 4"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: "3fa85f64-5717-4562-b3fc-2c963f66afa8",
-        name: "Поле 2",
-        description: "Описание поля 2",
-        contours: [
-          {
-            name: "Контур 3",
-            color: "FF5733",
-            id: "3fa85f64-5717-4562-b3fc-2c963f66afa9",
-            squareArea: "30",
-            cropRotations: [
-              {
-                id: "5",
-                culture: "Культура 5",
-                cultivar: "Сорт 5",
-                startDate: "2024-09-01",
-                endDate: "2024-09-15",
-                description: "Описание 5"
-              },
-              {
-                id: "6",
-                culture: "Культура 6",
-                cultivar: "Сорт 6",
-                startDate: "2024-09-16",
-                endDate: "2024-09-30",
-                description: "Описание 6"
-              }
-            ]
-          },
-          {
-            name: "Контур 4",
-            color: "33FF57",
-            id: "3fa85f64-5717-4562-b3fc-2c963f66afaa",
-            squareArea: "40",
-            cropRotations: [
-              {
-                id: "7",
-                culture: "Культура 7",
-                cultivar: "Сорт 7",
-                startDate: "2024-10-01",
-                endDate: "2024-10-20",
-                description: "Описание 7"
-              },
-              {
-                id: "8",
-                culture: "Культура 8",
-                cultivar: "Сорт 8",
-                startDate: "2024-10-21",
-                endDate: "2024-10-31",
-                description: "Описание 8"
-              },
-              {
-                id: "9",
-                culture: "Культура 9",
-                cultivar: "Сорт 9",
-                startDate: "2024-10-01",
-                endDate: "2024-10-20",
-                description: "Описание 9"
-              },
-              {
-                id: "10",
-                culture: "Культура 10",
-                cultivar: "Сорт 10",
-                startDate: "2024-10-21",
-                endDate: "2024-10-31",
-                description: "Описание 10"
-              },
-              {
-                id: "11",
-                culture: "Культура 11",
-                cultivar: "Сорт 11",
-                startDate: "2024-10-11",
-                endDate: "2024-10-20",
-                description: "Описание 11"
-              },
-              {
-                id: "12",
-                culture: "Культура 12",
-                cultivar: "Сорт 12",
-                startDate: "2024-10-21",
-                endDate: "2024-10-31",
-                description: "Описание 12"
-              },
-              {
-                id: "13",
-                culture: "Культура 13",
-                cultivar: "Сорт 13",
-                startDate: "2024-10-01",
-                endDate: "2024-11-20",
-                description: "Описание 13"
-              },
-              {
-                id: "14",
-                culture: "Культура 14",
-                cultivar: "Сорт 14",
-                startDate: "2024-10-21",
-                endDate: "2024-12-31",
-                description: "Описание 14"
-              }
-              
-            ]
-          }
-        ]
-      },
-      {
-        id: "3fa85f64-5717-4562-b3fc-2c963f66afab",
-        name: "Поле 3",
-        description: "Описание поля 3",
-        contours: [
-          {
-            name: "Контур 5",
-            color: "5733FF",
-            id: "3fa85f64-5717-4562-b3fc-2c963f66afac",
-            squareArea: "50",
-            cropRotations: [
-              {
-                id: "9",
-                culture: "Культура 9",
-                cultivar: "Сорт 9",
-                startDate: "2024-11-01",
-                endDate: "2024-11-15",
-                description: "Описание 9"
-              },
-              {
-                id: "10",
-                culture: "Культура 10",
-                cultivar: "Сорт 10",
-                startDate: "2024-11-16",
-                endDate: "2024-11-30",
-                description: "Описание 10"
-              }
-            ]
-          }
-        ]
-      }
-    ];
-
-
     onMounted(async () => {
       try {
         const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons`, {
@@ -337,16 +137,14 @@ export default {
       }
     });
 
-    const navigateToAddSeason = () => {
-      router.push({ name: 'add_season' });
-    };
-
     const fetchFields = async (OnSeason) => {
       if (!OnSeason || !OnSeason.value) return;
+
       const seasonId = OnSeason.value;
       const seasonName = OnSeason.label;
+
       try {
-        const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons/${seasonId}/fields`, {
+        const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons/full`, {
           headers: {
             Authorization: `Bearer ${accessToken.value}`,
             'Content-Type': 'application/json'
@@ -354,35 +152,22 @@ export default {
         });
 
         const data = response.data;
+        const currentSeason = data.find(season => season.id === seasonId);
 
-        if (!data || !Array.isArray(data) || data.length === 0) {
-          fieldsData.value = fakeData.flatMap(field => {
-            return field.contours.map((contour, index) => ({
-              seasonId: "mock-season-id",
-              seasonName: "Летний сезон",
-              fieldId: field.id,
-              fieldName: index === 0 ? field.name : '',
-              contourId: contour.id,
-              contourName: contour.name,
-              contourColor: contour.color,
-              squareArea: contour.squareArea,
-              cropRotations: contour.cropRotations.map(rotation => ({
-                cropRotationId: rotation.id,
-                culture: rotation.culture,
-                cultivar: rotation.cultivar,
-                startDate: rotation.startDate,
-                endDate: rotation.endDate,
-                description: rotation.description
-              }))
-            }));
+        if (!currentSeason || !currentSeason.fields || currentSeason.fields.length === 0) {
+          fieldsData.value = [];
+          $q.notify({
+            color: 'warning',
+            message: 'No fields found for the selected season.',
+            icon: 'info'
           });
         } else {
-          fieldsData.value = data.flatMap(field => {
-            return field.contours.map((contour, index) => ({
+          fieldsData.value = currentSeason.fields.flatMap(field => {
+            return field.contours.map(contour => ({
               seasonId: seasonId,
               seasonName: seasonName,
               fieldId: field.id,
-              fieldName: index === 0 ? field.name : '',
+              fieldName: field.name,
               contourId: contour.id,
               contourName: contour.name,
               contourColor: contour.color,
@@ -404,36 +189,17 @@ export default {
           message: 'Failed to load field data. Please check your connection or try again later.',
           icon: 'warning'
         });
-
-        fieldsData.value = fakeData.flatMap(field => {
-          return field.contours.map((contour, index) => ({
-            seasonId: "mock-season-id",
-            seasonName: "Летний сезон",
-            fieldId: field.id,
-            fieldName: index === 0 ? field.name : '',
-            contourId: contour.id,
-            contourName: contour.name,
-            contourColor: contour.color,
-            squareArea: contour.squareArea,
-            cropRotations: contour.cropRotations.map(rotation => ({
-              cropRotationId: rotation.id,
-              culture: rotation.culture,
-              cultivar: rotation.cultivar,
-              startDate: rotation.startDate,
-              endDate: rotation.endDate,
-              description: rotation.description
-            }))
-          }));
-        });
+        fieldsData.value = [];
       }
     };
 
-    const calculateTimelineWidth = (startDate, endDate) => {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const totalDays = (end - start) / (1000 * 60 * 60 * 24); // Calculate days
-      const pixelPerDay = 10; // Scale factor: 10px per day
-      return `${totalDays * pixelPerDay}px`;
+    const calculateTimelineWidth = () => {
+      return '200px'; // Fixed width for all timeline bars
+    };
+
+    const firstContourId = (fieldId) => {
+      const fieldContours = fieldsData.value.filter(row => row.fieldId === fieldId);
+      return fieldContours[0]?.contourId;
     };
 
     const formatDate = (date) => {
@@ -472,43 +238,16 @@ export default {
       formatDate,
       ensureColorFormat,
       navigateToEditPage,
-      navigateToAddSeason
+      firstContourId
     };
   }
 };
 </script>
 
-
 <style scoped>
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
 .season-select {
   width: 200px;
 }
-.button-common {
-  width: 220px;
-  height: 60px;
-  background-color: #2e3a4b;
-  color: #ffffff; 
-  font-size: 1rem;
-  border-radius: 10px; 
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); 
-  text-transform: none; 
-  padding: 0 16px; 
-  font-weight: 500; 
-  letter-spacing: 0.5px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  gap: 6px; 
-  transition: all 0.2s ease-in-out;
-}
-
 
 .table-scroll-container {
   width: 100%;
@@ -531,16 +270,6 @@ export default {
   text-align: center;
   white-space: nowrap;
   padding: 12px;
-}
-
-.fixed-table thead th.crop-rotations-header {
-  position: sticky;
-  left: 600px; 
-  z-index: 3;
-  background-color: #f5f5f5;
-  text-align: left;
-  padding-left: 20px; 
-  transform: translateX(20px); 
 }
 
 .field-name-cell {
@@ -571,7 +300,7 @@ export default {
 .crop-rotations {
   display: inline-flex;
   flex-wrap: nowrap;
-  gap: 80px; 
+  gap: 80px;
   padding-right: 24px;
   align-items: center;
 }
@@ -608,16 +337,14 @@ export default {
   z-index: 2;
   flex-shrink: 0;
   margin-left: -3px;
-  margin-right: -3px; 
+  margin-right: -3px;
 }
-
 
 .timeline-line {
   height: 2px;
   background-color: #2196F3;
   margin: 0 6px;
-  min-width: 50px; 
-  flex-grow: 1;
+  width: 200px;
 }
 
 .timeline-date {
@@ -627,10 +354,9 @@ export default {
   border-radius: 2px;
   white-space: nowrap;
   position: absolute;
-  top: 14px; 
+  top: 14px;
   z-index: 3;
 }
-
 
 .timeline-date.left {
   transform: translateX(-50%);
@@ -638,9 +364,8 @@ export default {
 
 .timeline-date.right {
   transform: translateX(50%);
-  right: 0; 
+  right: 0;
 }
-
 
 .q-btn.flat {
   margin-left: 8px;
@@ -655,4 +380,3 @@ export default {
   border-right: none;
 }
 </style>
-
