@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <q-page padding class="legacy-form-page">
+  <q-card class="legacy-form-card q-pa-md">
     <q-btn label="Загрузить файл" @click="uploadFile"></q-btn>
     <input type="file" ref="fileInput" @change="handleFileUpload" style="display: none" />
 
@@ -26,7 +27,8 @@
       <q-btn label="Добавить" @click="submitData" :disabled="isSubmitDisabled"></q-btn>
       <q-btn label="Удалить" @click="deleteData"></q-btn>
     </div>
-  </div>
+  </q-card>
+  </q-page>
 </template>
 
 <script>
@@ -311,4 +313,13 @@ export default {
 };
 </script>
 
-<style></style>
+<style scoped>
+.legacy-form-page {
+  display: flex;
+  justify-content: center;
+}
+
+.legacy-form-card {
+  width: min(980px, 100%);
+}
+</style>

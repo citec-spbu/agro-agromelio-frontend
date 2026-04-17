@@ -1,27 +1,22 @@
 <template>
   <q-dialog v-model="dialogOpen" persistent>
-    <q-card class="q-ma-sm">
+    <q-card class="q-ma-sm worker-dialog-card">
       <q-card-section>
-        <q-input filled label="Email" type="email" class="q-ma-md" v-model="workerData.email" clearable></q-input>
-        <!-- <div class="row">
-            <q-input filled label="Логин" class="q-mx-md col" v-model="userData.login" clearable></q-input> -->
-        <q-input filled label="Пароль" type="password" class="q-mx-md col" v-model="workerData.password"
-          clearable></q-input>
-
-        <!-- <q-input filled label="Фамилия" class="q-ma-md" v-model="userData.surname" clearable></q-input>
-          <q-input filled label="Имя" class="q-ma-md" v-model="userData.name" clearable></q-input>
-          <q-input filled label="Отчество" class="q-ma-md" v-model="userData.patronymic" clearable></q-input> -->
-        <!-- <q-input filled label="Роль" class="q-ma-md" v-model="workerData.role" clearable></q-input> -->
+        <div class="text-subtitle1 text-weight-medium">Новый сотрудник</div>
+        <q-input outlined label="Email" type="email" class="q-mt-md" v-model="workerData.email" clearable></q-input>
+        <q-input outlined label="Пароль" type="password" class="q-mt-sm" v-model="workerData.password" clearable></q-input>
       </q-card-section>
-      <q-card-actions align="right" class="q-ma-md"> <q-btn class="q-mr-lg" flat @click="cancel">Отмена</q-btn><q-btn
-          style="background-color: #1b2332;" text-color="white" class="q-ml-lg"
-          @click="addUser">Подтвердить</q-btn></q-card-actions>
+      <q-card-actions align="right" class="q-px-md q-pb-md">
+        <q-btn class="q-mr-sm" flat @click="cancel">Отмена</q-btn>
+        <q-btn color="primary" @click="addUser">Добавить</q-btn>
+      </q-card-actions>
     </q-card>
   </q-dialog>
 
   <q-dialog v-model="editFlag">
-    <q-card>
+    <q-card class="profile-preview-card">
       <div class="q-pa-xl">
+        <div class="text-subtitle1 text-weight-medium q-mb-sm">Профиль сотрудника</div>
         <div class="q-my-sm">Почта: {{ selectRow.email }}</div>
         <div v-if="workData.name">
           <div class="q-my-sm">Имя: {{ workData.name }}</div>
@@ -34,22 +29,25 @@
     </q-card>
   </q-dialog>
 
-  <div v-if="selectRow" class="q-my-md">
-    Выбранный сотрудник: {{ selectRow.id }} &mdash; {{ selectRow.email }}
-  </div>
+  <q-page padding class="workers-page">
+    <q-card class="workers-card">
+      <q-card-section class="row items-center justify-between q-col-gutter-sm">
+        <div class="text-h6">Сотрудники</div>
+        <div class="row q-gutter-sm">
+          <q-btn color="primary" icon="person_add" @click="dialogOpen = true">Добавить</q-btn>
+          <q-btn outline color="negative" icon="delete" @click="deleteUser">Удалить</q-btn>
+        </div>
+      </q-card-section>
 
-  <div class="row">
-    <q-btn style="background-color: #1b2332;" text-color="white" size="md" class="q-ma-sm col-auto"
-      @Click="dialogOpen = true">Добавить</q-btn>
-    <!-- <q-btn style="background-color: #1b2332;" text-color="white" size="md" class="q-ma-sm col-auto"
-      @Click="editUser">Редактировать</q-btn> -->
-    <q-btn style="background-color: #1b2332;" text-color="white" size="md" class="q-ma-sm col-auto"
-      @click="deleteUser">Удалить</q-btn>
-  </div>
-  <div class="q-mx-sm">
-    <q-table :rows="rows" :columns="columns" row-key="id" @row-click="rowSelected">
-    </q-table>
-  </div>
+      <q-card-section v-if="selectRow" class="selected-worker-banner">
+        Выбранный сотрудник: {{ selectRow.id }} &mdash; {{ selectRow.email }}
+      </q-card-section>
+
+      <q-card-section>
+        <q-table :rows="rows" :columns="columns" row-key="id" @row-click="rowSelected"></q-table>
+      </q-card-section>
+    </q-card>
+  </q-page>
 </template>
 
 <script>
@@ -58,16 +56,9 @@ import { userStore } from 'src/usage';
 import { reactive, ref } from 'vue';
 import { useQuasar } from 'quasar'
 
-// здесь все, что в миро написано, можно будет просто удалить ненужное / добавить нужное
 const columns = [
   { name: 'id', required: true, label: "id", align: 'center', field: 'id', sortable: true, style: "width:50px" },  // serial
-  // { name: 'user_id', required: true, label: "user_id", align: 'center', field: 'user_id', sortable: true, style: "width:60px" }, // int
-  // { name: 'name', required: true, label: "Имя", align: 'center', field: 'name', sortable: true }, // string
-  // { name: 'surname', required: true, label: "Фамилия", align: 'center', field: 'surname', sortable: true }, // string
-  // { name: 'patronymic', label: "Отчество", align: 'center', field: 'patronymic', sortable: true }, // string
   { name: 'email', required: true, label: "Email", align: 'center', field: 'email', sortable: true }, // string
-  // { name: 'date_of_birth', required: true, label: "Дата", align: 'center', field: 'date_of_birth', sortable: true }, // date
-  // { name: 'phone_number', required: true, label: "Номер телефона", align: 'center', field: 'phone_number', sortable: true }, // string
 ]
 
 
@@ -75,7 +66,6 @@ export default {
   setup() {
     const rows = ref([]);
     const dialogOpen = ref(false);
-    const flag = ref(false);
     const editFlag = ref(false);
     const $q = useQuasar();
     const selectRow = ref(null);
@@ -88,10 +78,7 @@ export default {
       editUser();
     }
 
-    // const userData = reactive({ email: '', login: '', password: '', surname: '', name: '', patronymic: '', role: '' });
     const workerData = reactive({ email: '', password: '' });
-
-    const workers = ref([]);
 
     function getTable() {
       return new Promise((resolve, reject) => {
@@ -115,8 +102,6 @@ export default {
         console.error(error);
         userStore.setError(error);
       })
-    console.log(workers);
-
     function addUser() {
       console.log(workerData);
       if (!workerData.email.trim() || !workerData.password.trim()) {
@@ -173,7 +158,7 @@ export default {
           persistent: true
         })
           .onOk(() => {
-            postToServer({ url: `${process.env.VUE_APP_BASE_URL}/api//auth/users/workers/${selectRow.value.id}`, request: 'delete' })
+            postToServer({ url: `${process.env.VUE_APP_BASE_URL}/api/auth/users/workers/${selectRow.value.id}`, request: 'delete' })
               .then((response) => {
                 console.log(response);
                 selectRow.value = null;
@@ -207,4 +192,25 @@ export default {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.workers-page {
+  padding-top: 10px;
+}
+
+.workers-card {
+  border-radius: 14px;
+}
+
+.selected-worker-banner {
+  background: #f3f7ff;
+  border: 1px solid #dbe7ff;
+  border-radius: 10px;
+  color: #314766;
+}
+
+.worker-dialog-card,
+.profile-preview-card {
+  min-width: 360px;
+  border-radius: 12px;
+}
+</style>

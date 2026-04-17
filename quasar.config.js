@@ -1,6 +1,6 @@
 const { configure } = require('quasar/wrappers');
 // const { default: leaflet } = require('src/boot/leaflet');
-const { mergeConfig } = require('vite')
+const { mergeConfig } = require('vite');
 require('dotenv').config();
 
 module.exports = configure(function (/* ctx */) {
@@ -13,13 +13,13 @@ module.exports = configure(function (/* ctx */) {
     },
 
     boot: [
+      'theme',
       'axios',
       'errorHandling',
     ],
 
     css: [
-      // 'app.scss'
-
+      'app.scss'
     ],
 
 
@@ -34,24 +34,28 @@ module.exports = configure(function (/* ctx */) {
 
     build: {
       env: {
-        VUE_APP_BASE_URL: process.env.VUE_APP_BASE_URL // 引入环境变量 Introduce environment variables
+        VUE_APP_BASE_URL: process.env.VUE_APP_BASE_URL, // 引入环境变量 Introduce environment variables
+        VUE_APP_ANALYTICS_MFE_URL: process.env.VUE_APP_ANALYTICS_MFE_URL,
       },
       target: {
         browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],
         node: 'node16'
       },
-      extendViteConf(viteConf, { isServer, isClient }) {
-        // example: change the chunk size warning limit
+      extendViteConf(viteConf) {
         viteConf.build = mergeConfig(viteConf.build, {
-          chunkSizeWarningLimit: 750
-        })
-        // equivalent of following vite.config.js/vite.config.ts:
-        // export default defineConfig({
-        //   build: {
-        //     chunkSizeWarningLimit: 750
-        //   }
-        // })
-        // +
+          chunkSizeWarningLimit: 750,
+        });
+        // Дублируем proxy на server после merge Quasar → Vite (на случай порядка конфигурации)
+        if (viteConf.server) {
+          viteConf.server.proxy = {
+            ...(viteConf.server.proxy || {}),
+            '/api': {
+              target: process.env.VUE_APP_GATEWAY_URL || 'http://127.0.0.1:8080',
+              changeOrigin: true,
+              secure: false,
+            },
+          };
+        }
       },
 
 
@@ -60,14 +64,23 @@ module.exports = configure(function (/* ctx */) {
 
 
     devServer: {
-      open: false, // существующая настройка
-      server: {
-        watch: {
-          // Использование опроса, каждые 100ms проверять изменения
-          usePolling: true,
-          interval: 100,
-        }
-      }
+      open: false,
+      // В Docker без 0.0.0.0 порт не доступен с хоста при quasar dev
+      host: process.env.DEV_SERVER_HOST || '0.0.0.0',
+      // Порт 9000: шлюз обычно на 8080; /api проксируется на VUE_APP_GATEWAY_URL
+      port: Number(process.env.DEV_SERVER_PORT) || 9000,
+      proxy: {
+        '/api': {
+          target: process.env.VUE_APP_GATEWAY_URL || 'http://127.0.0.1:8080',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+      // В Vite watch — прямо на server, не devServer.server (иначе chokidar не подхватывается)
+      watch: {
+        usePolling: true,
+        interval: 100,
+      },
     },
 
 
@@ -76,6 +89,7 @@ module.exports = configure(function (/* ctx */) {
       config: {},
 
       plugins: [
+        'Dark',
         'Dialog',
         'Notify'
       ]

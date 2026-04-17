@@ -1,59 +1,45 @@
 <template>
-  <!-- 3 кнопки будут видны если нажань на редактировать -->
-  <div class="edit-mode q-pa-md">
-    <q-btn
-      v-if="editModeOn"
-      fab
-      color="primary"
-      icon="add"
-      class="button"
-      @click="startDrawing()"
-    >
-      <div class="button-overlay">
-        <p>Добавить контур</p>
+  <div class="edit-shell">
+    <div class="edit-fab-wrap">
+      <q-btn
+        fab
+        color="primary"
+        :icon="editModeOn ? 'close' : 'edit'"
+        class="edit-fab"
+        @click="toggleEditMode"
+      />
+      <div class="edit-fab-label">{{ editModeOn ? "Завершить редактирование" : "Режим редактирования" }}</div>
+    </div>
+
+    <transition name="actions-fade">
+      <div v-if="editModeOn" class="edit-actions-card">
+        <q-btn no-caps color="primary" icon="add" class="action-btn" @click="startDrawing()">
+          <span class="btn-label">Добавить</span>
+        </q-btn>
+        <q-btn
+          no-caps
+          :outline="!isPointDeleteMode"
+          :color="isPointDeleteMode ? 'negative' : 'primary'"
+          icon="location_searching"
+          class="action-btn"
+          @click="togglePointDeleteMode"
+        >
+          <span class="btn-label">{{ isPointDeleteMode ? "Удаление точки: ВКЛ" : "Удалить точку" }}</span>
+        </q-btn>
+        <q-btn no-caps color="positive" icon="done" class="action-btn" @click="postContours()">
+          <span class="btn-label">Сохранить</span>
+        </q-btn>
+        <q-btn no-caps outline color="negative" icon="delete" class="action-btn" @click="confirm = true">
+          <span class="btn-label">Удалить</span>
+        </q-btn>
+        <div class="edit-hint">Клик по контуру = выбор. При режиме "Удалить точку" клик по вершине удаляет ее.</div>
       </div>
-    </q-btn>
-    <q-btn
-      v-if="editModeOn"
-      fab
-      color="primary"
-      icon="undo"
-      class="button"
-      @click="undoLastAction()"
-    >
-      <div class="button-overlay">
-        <p>Шаг назад</p>
-      </div>
-    </q-btn>
-    <q-btn
-      v-if="editModeOn"
-      fab
-      color="primary"
-      icon="done"
-      class="button"
-      @click="postContours()"
-    >
-      <div class="button-overlay">
-        <p>Сохранить</p>
-      </div>
-    </q-btn>
-    <q-btn
-      v-if="editModeOn"
-      fab
-      color="primary"
-      icon="delete"
-      class="button"
-      @click="confirm = true"
-    >
-      <div class="button-overlay">
-        <p>Удалить контур</p>
-      </div>
-    </q-btn>
+    </transition>
 
     <!-- для подтверждения удаления
        сделать чтобы кнопочки да нет работали -->
     <q-dialog v-model="confirm" persistent>
-      <q-card class="confirm-deleting q-pa-md" style="border-radius: 40px">
+      <q-card class="confirm-deleting q-pa-md">
         <q-card-section class="row items-center">
           <span align="center"
             ><strong>Вы действительно хотите удалить этот объект?</strong></span
@@ -65,23 +51,11 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-    <q-btn
-      fab
-      color="primary"
-      icon="edit"
-      class="button"
-      @click="toggleEditMode"
-    >
-      <div class="button-overlay">
-        <p>Режим редактирования</p>
-      </div>
-    </q-btn>
   </div>
 </template>
 
 <script>
-import { useQuasar } from "quasar";
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 
 export default {
   name: "MapPageEditButtons",
@@ -92,81 +66,147 @@ export default {
     },
   },
   setup(props, { emit }) {
-    const $q = useQuasar();
     const confirm = ref(false);
     const editModeOn = ref(false);
     const isDrawing = ref(false);
+    const isPointDeleteMode = ref(false);
     const startDrawing = () => {
-      if (!props.polygonIsFinished) {
-        isDrawing.value = !isDrawing.value;
-      }
+      isDrawing.value = !isDrawing.value;
       emit("startDrawing", isDrawing.value);
     };
     const removeSelectedPolygon = () => {
       confirm.value = false;
       emit("removeSelectedPolygon");
     };
-    const undoLastAction = () => {
-      emit("undoLastAction");
-    };
     const postContours = () => {
       emit("postContours");
     };
+    const togglePointDeleteMode = () => {
+      isPointDeleteMode.value = !isPointDeleteMode.value;
+      emit("isPointDeleteMode", isPointDeleteMode.value);
+    };
     const toggleEditMode = () => {
       editModeOn.value = !editModeOn.value;
+      if (!editModeOn.value && isDrawing.value) {
+        isDrawing.value = false;
+        emit("startDrawing", false);
+      }
+      if (!editModeOn.value && isPointDeleteMode.value) {
+        isPointDeleteMode.value = false;
+        emit("isPointDeleteMode", false);
+      }
       emit("isEditMode", editModeOn.value);
     };
 
     return {
       startDrawing,
-      undoLastAction,
       removeSelectedPolygon,
       confirm,
       editModeOn,
       postContours,
       toggleEditMode,
+      isPointDeleteMode,
+      togglePointDeleteMode,
     };
   },
 };
 </script>
 <style scoped>
-.button-overlay {
-  position: absolute;
-  background-color: #222c3c;
-  display: none;
-  text-align: center;
-  left: 90%;
-  font-size: 10px;
-  border-radius: 4px;
-  font-family: Arial, sans-serif;
-  white-space: nowrap;
-}
-
-.edit-mode {
+.edit-shell {
   display: flex;
-  z-index: 1000;
-  position: absolute;
+  z-index: 1250;
+  position: fixed;
   flex-direction: column;
-  bottom: 60px;
-  left: 10px;
+  gap: 10px;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-.button {
-  margin: 5px;
+.edit-fab-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
 }
 
-.button:hover .button-overlay {
-  display: inline-block;
-  /* width: 110px; */
-  height: 25px;
-  padding-right: 10px;
-  padding-left: 10px;
-  min-width: 50px;
-  width: auto;
+.edit-fab {
+  box-shadow: 0 12px 24px rgba(19, 36, 58, 0.22);
+}
+
+.edit-fab-label {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dce6f6;
+  color: #29415f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edit-actions-card {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 20px rgba(19, 36, 58, 0.15);
+  backdrop-filter: blur(6px);
+  border: 1px solid #dce6f6;
+}
+
+.edit-hint {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: #526884;
+  padding: 2px 2px 0;
+}
+
+.action-btn {
+  min-width: 110px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.btn-label {
+  margin-left: 4px;
+}
+
+.actions-fade-enter-active,
+.actions-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.actions-fade-enter-from,
+.actions-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 .confirm-deleting {
-  height: 160px;
-  width: 300px;
+  min-height: 160px;
+  width: 320px;
+  border-radius: 16px;
+}
+
+@media (max-width: 980px) {
+  .edit-shell {
+    left: 12px;
+    right: 12px;
+    transform: none;
+  }
+
+  .edit-fab-wrap {
+    align-self: flex-start;
+  }
+
+  .edit-actions-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-btn {
+    min-width: 0;
+  }
 }
 </style>

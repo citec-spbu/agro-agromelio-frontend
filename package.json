@@ -9,6 +9,7 @@
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "jest --watch",
+    "test:e2e:dzz": "node tests/e2e/dzz-flow.mjs",
     "dev": "quasar dev",
     "build": "quasar build",
     "start": "http-server dist/spa -p 9000"
@@ -45,6 +46,7 @@
     "eslint-plugin-vue": "^9.0.0",
     "jest-environment-jsdom": "^29.7.0",
     "leaflet": "^1.9.4",
+    "playwright": "^1.58.2",
     "postcss": "^8.4.14",
     "prettier": "^2.5.1",
     "quasar": "^2.17.4",

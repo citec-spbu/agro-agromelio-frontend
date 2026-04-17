@@ -185,8 +185,8 @@ export default {
       { name: 'culture', label: 'Культура', align: 'left', field: 'culture', sortable: true },
       { name: 'cultivar', label: 'Сорт', align: 'left', field: 'cultivar', sortable: true },
       { name: 'description', label: 'Описание', align: 'left', field: 'description', sortable: true },
-      { name: 'startDate', label: 'Дата начала', align: 'left', field: 'startDate', sortable: true },
-      { name: 'endDate', label: 'Дата окончания', align: 'left', field: 'endDate', sortable: true },
+      { name: 'startDate', label: 'Дата посева', align: 'left', field: 'startDate', sortable: true },
+      { name: 'endDate', label: 'Дата уборки', align: 'left', field: 'endDate', sortable: true },
       { name: 'edit', label: 'Редактировать', align: 'center', field: 'edit', sortable: false },
       { name: 'delete', label: 'Удалить', align: 'center', field: 'delete', sortable: false }
     ];
@@ -578,8 +578,8 @@ html, body {
 
 
 .contour-info-container {
-  max-width: 100%;
-  margin-left: 0;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .full-width {
@@ -588,7 +588,7 @@ html, body {
 
 .text-h6 {
   font-size: 1.25rem;
-  color: #333;
+  color: #27364f;
   font-weight: bold;
 }
 
@@ -631,23 +631,22 @@ html, body {
 
 .table-scroll-container {
   overflow-x: auto; 
-  white-space: nowrap; 
+  white-space: nowrap;
   border: 1px solid #ccc;
   padding: 8px;
   margin-top: 16px;
+  border-radius: 8px;
 }
 
 .custom-table .q-table__cell {
-  max-width: 5000px !important;
-  min-width: 5000px !important;
+  min-width: 180px;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
 }
 
 .custom-table .q-table__title {
-  max-width: 5000px;
-  min-width: 5000px;
+  min-width: 280px;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;

@@ -173,7 +173,8 @@ export default {
 
 .my__btn {
     font-size: 1rem;
-
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(8px);
 }
 
 .my-image {
@@ -194,14 +195,23 @@ export default {
 
 .q-my-auto {
     font-size: 17px;
+    color: #2a3a53;
 }
 
 .my-text {
     font-size: 20px;
+    color: #23354f;
 }
 
 .q-icon {
     left: 43%;
+    color: #2f67d8;
+}
+
+.my-component :deep(.q-card) {
+    border-radius: 16px;
+    border: 1px solid #e5ecf7;
+    box-shadow: 0 10px 26px rgba(19, 36, 58, 0.08);
 }
 
 

@@ -7,8 +7,8 @@
         </q-card-section>
         <q-card-section>
 
-          <div class="row items-center no-wrap" style="width: 100%;">
-            <div class="col-auto">
+          <div class="row items-center q-col-gutter-sm season-toolbar">
+            <div class="col-12 col-md-4">
               <q-select
                 v-model="OnSeason"
                 label="Выбор сезона"
@@ -19,6 +19,26 @@
                 outlined
                 class="season-select"
                 @update:model-value="fetchFields"
+              />
+            </div>
+            <div class="col-auto">
+              <q-btn
+                outline
+                color="primary"
+                icon="edit"
+                label="Редактировать"
+                :disable="!OnSeason"
+                @click="openEditSeasonDialog"
+              />
+            </div>
+            <div class="col-auto">
+              <q-btn
+                outline
+                color="negative"
+                icon="delete"
+                label="Удалить"
+                :disable="!OnSeason"
+                @click="confirmDeleteSeason"
               />
             </div>
           </div>
@@ -89,11 +109,32 @@
         </q-card-section>
       </q-card>
     </div>
+
+    <q-dialog v-model="isEditDialogOpen" persistent>
+      <q-card style="min-width: 360px;">
+        <q-card-section class="text-h6">Редактирование сезона</q-card-section>
+        <q-card-section class="q-gutter-sm">
+          <q-input v-model="seasonForm.name" outlined label="Название сезона" />
+          <q-input v-model="seasonForm.startDate" outlined type="date" label="Дата начала" />
+          <q-input v-model="seasonForm.endDate" outlined type="date" label="Дата окончания" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Отмена" @click="isEditDialogOpen = false" />
+          <q-btn
+            color="primary"
+            label="Сохранить"
+            :loading="isSeasonSaving"
+            :disable="isSeasonFormInvalid"
+            @click="updateSeason"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, reactive } from 'vue';
 import axios from 'axios';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
@@ -108,7 +149,18 @@ export default {
     const OnSeason = ref(null);
     const seasons = ref([]);
     const fieldsData = ref([]);
+    const isEditDialogOpen = ref(false);
+    const isSeasonSaving = ref(false);
+    const seasonsById = ref({});
+    const seasonForm = reactive({
+      name: '',
+      startDate: '',
+      endDate: ''
+    });
     const accessToken = computed(() => userStore.state.access_token);
+    const isSeasonFormInvalid = computed(() => {
+      return !seasonForm.name?.trim() || !seasonForm.startDate || !seasonForm.endDate;
+    });
 
     const fieldsColumns = [
       { name: 'fieldName', label: 'поля', align: 'center', field: 'fieldName'},
@@ -116,7 +168,7 @@ export default {
       { name: 'cropRotations', label: 'Посевы', align: 'center', field: 'cropRotations'}
     ];
 
-    onMounted(async () => {
+    const loadSeasons = async () => {
       try {
         const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons`, {
           headers: {
@@ -124,6 +176,7 @@ export default {
             'Content-Type': 'application/json'
           }
         });
+        seasonsById.value = Object.fromEntries(response.data.map((season) => [season.id, season]));
         seasons.value = response.data.map(season => ({
           label: season.name,
           value: season.id 
@@ -135,6 +188,10 @@ export default {
           icon: 'warning'
         });
       }
+    };
+
+    onMounted(async () => {
+      await loadSeasons();
     });
 
     const fetchFields = async (OnSeason) => {
@@ -193,8 +250,94 @@ export default {
       }
     };
 
-    const calculateTimelineWidth = () => {
-      return '200px'; // Fixed width for all timeline bars
+    const openEditSeasonDialog = () => {
+      if (!OnSeason.value) {
+        return;
+      }
+      const currentSeason = seasonsById.value[OnSeason.value.value];
+      seasonForm.name = currentSeason?.name || OnSeason.value.label;
+      seasonForm.startDate = currentSeason?.startDate || '';
+      seasonForm.endDate = currentSeason?.endDate || '';
+      isEditDialogOpen.value = true;
+    };
+
+    const updateSeason = async () => {
+      if (!OnSeason.value) {
+        return;
+      }
+      isSeasonSaving.value = true;
+      try {
+        const payload = {
+          name: seasonForm.name.trim(),
+          startDate: seasonForm.startDate,
+          endDate: seasonForm.endDate,
+          season: 'SeasonBaseDTO'
+        };
+        await axios.put(`${process.env.VUE_APP_BASE_URL}/api/fields-service/season`, payload, {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+            'Content-Type': 'application/json'
+          },
+          params: {
+            id: OnSeason.value.value
+          }
+        });
+        isEditDialogOpen.value = false;
+        $q.notify({
+          color: 'positive',
+          message: 'Сезон успешно обновлен.',
+          icon: 'check'
+        });
+        await loadSeasons();
+        await fetchFields(OnSeason.value);
+      } catch (error) {
+        $q.notify({
+          color: 'negative',
+          message: 'Не удалось обновить сезон.',
+          icon: 'warning'
+        });
+      } finally {
+        isSeasonSaving.value = false;
+      }
+    };
+
+    const confirmDeleteSeason = () => {
+      if (!OnSeason.value) {
+        return;
+      }
+      $q.dialog({
+        title: 'Подтверждение',
+        message: `Удалить сезон "${OnSeason.value.label}"?`,
+        cancel: { label: 'Отмена', flat: true, color: 'primary' },
+        ok: { label: 'Удалить', color: 'negative' },
+        persistent: true
+      }).onOk(async () => {
+        try {
+          await axios.delete(`${process.env.VUE_APP_BASE_URL}/api/fields-service/season`, {
+            headers: {
+              Authorization: `Bearer ${accessToken.value}`,
+              'Content-Type': 'application/json'
+            },
+            params: {
+              id: OnSeason.value.value
+            }
+          });
+          $q.notify({
+            color: 'positive',
+            message: 'Сезон удален.',
+            icon: 'check'
+          });
+          OnSeason.value = null;
+          fieldsData.value = [];
+          await loadSeasons();
+        } catch (error) {
+          $q.notify({
+            color: 'negative',
+            message: 'Не удалось удалить сезон.',
+            icon: 'warning'
+          });
+        }
+      });
     };
 
     const firstContourId = (fieldId) => {
@@ -232,9 +375,15 @@ export default {
       seasons,
       OnSeason,
       fieldsData,
+      seasonForm,
+      isEditDialogOpen,
+      isSeasonSaving,
+      isSeasonFormInvalid,
       fieldsColumns,
       fetchFields,
-      calculateTimelineWidth,
+      openEditSeasonDialog,
+      updateSeason,
+      confirmDeleteSeason,
       formatDate,
       ensureColorFormat,
       navigateToEditPage,
@@ -246,7 +395,12 @@ export default {
 
 <style scoped>
 .season-select {
-  width: 200px;
+  width: 100%;
+}
+
+.season-toolbar {
+  width: 100%;
+  align-items: center;
 }
 
 .table-scroll-container {
@@ -262,7 +416,7 @@ export default {
 }
 
 .fixed-table thead th {
-  background-color: #f5f5f5;
+  background-color: #f7faff;
   font-weight: bold;
   position: sticky;
   top: 0;
@@ -300,7 +454,7 @@ export default {
 .crop-rotations {
   display: inline-flex;
   flex-wrap: nowrap;
-  gap: 80px;
+  gap: 32px;
   padding-right: 24px;
   align-items: center;
 }
@@ -374,6 +528,7 @@ export default {
 
 .q-table {
   border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
 }
 
 .q-td {

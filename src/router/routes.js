@@ -33,6 +33,11 @@ const routes = [
         component: () => import("pages/MapPage.vue"),
       },
       {
+        path: "analytics",
+        name: "analytics",
+        component: () => import("pages/AnalyticsHostPage.vue"),
+      },
+      {
         path: "culture",
         name: "culture",
         component: () => import("pages/CulturePage.vue"),
@@ -61,6 +66,11 @@ const routes = [
         path: "field_weather_info",
         name: "FieldWeatherInfoPage",
         component: () => import("pages/Field_weatherInfo_page.vue")
+      },
+      {
+        path: "field_dzz_info",
+        name: "FieldDzzInfoPage",
+        component: () => import("pages/FieldDzzInfoPage.vue")
       },
       {
         path: "workers",

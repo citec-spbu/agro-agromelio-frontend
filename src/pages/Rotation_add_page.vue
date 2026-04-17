@@ -1,6 +1,6 @@
 <template>
   <div class="q-pa-md rotation-info-container">
-    <div class="text-h5 font-bold">{{ isEditMode ? 'Редактировать севооборот' : 'Добавление севооборота в контуре' }}</div>
+    <div class="rotation-page-title">{{ isEditMode ? 'Редактировать севооборот' : 'Добавление севооборота в контуре' }}</div>
 
     <div class="q-mt-md q-gutter-y-xs info-section">
       <div class="info-item row">
@@ -18,24 +18,88 @@
     </div>
 
     <div class="q-mt-md">
-      <q-input v-model="formData.culture" label="Название культуры" outlined dense class="q-mb-md"></q-input>
-      <q-input v-model="formData.cultivar" label="Название сорта" outlined dense class="q-mb-md"></q-input>
+      <q-select
+        v-model="selectedCultureId"
+        :options="cultureOptions"
+        label="Культура"
+        outlined
+        dense
+        emit-value
+        map-options
+        use-input
+        fill-input
+        hide-selected
+        input-debounce="0"
+        :loading="cultureLoading"
+        @filter="filterCultureOptions"
+        class="q-mb-md"
+      />
+      <q-select
+        v-model="formData.cultivar"
+        :options="cultivarOptions"
+        label="Сорт"
+        outlined
+        dense
+        emit-value
+        map-options
+        use-input
+        fill-input
+        hide-selected
+        input-debounce="0"
+        :disable="!selectedCultureId || cultivarLoading"
+        :loading="cultivarLoading"
+        @filter="filterCultivarOptions"
+        class="q-mb-md"
+      />
       <q-input v-model="formData.description" label="Описание" outlined dense class="q-mb-md"></q-input>
-      <q-input v-model="formData.startDate" label="Дата сева" hint="Формат: YYYY-MM-DD" mask="####-##-##" outlined dense class="q-mb-md"></q-input>
-      <q-input v-model="formData.endDate" label="Дата уборки" hint="Формат: YYYY-MM-DD" mask="####-##-##" outlined dense class="q-mb-md"></q-input>
+
+      <q-input
+        v-model="formData.startDate"
+        label="Дата посева"
+        outlined
+        dense
+        clearable
+        class="q-mb-md"
+        hint="Календарь по иконке или ввод ГГГГ-ММ-ДД"
+        mask="####-##-##"
+      >
+        <template #append>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date v-model="formData.startDate" mask="YYYY-MM-DD" minimal />
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
+
+      <q-input
+        v-model="formData.endDate"
+        label="Дата уборки"
+        outlined
+        dense
+        clearable
+        class="q-mb-md"
+        hint="Календарь по иконке или ввод ГГГГ-ММ-ДД"
+        mask="####-##-##"
+      >
+        <template #append>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date v-model="formData.endDate" mask="YYYY-MM-DD" minimal />
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
     </div>
 
     <div class="button-section q-mt-md row no-gutters items-center">
-      <q-btn label="Загрузить файл" @click="uploadFile" outline color="primary" class="q-mr-md" />
-      <input type="file" ref="fileInput" @change="handleFileUpload" style="display: none" />
-      
       <q-btn :label="isEditMode ? 'Сохранить изменения' : 'Сохранить'" @click="saveRotation" color="primary" push />
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { useQuasar } from 'quasar';
@@ -58,6 +122,18 @@ export default {
 
     const isEditMode = ref(!!route.query.cropRotationId);
     const cropRotationId = ref(route.query.cropRotationId || '');
+    const allCultureOptions = ref([]);
+    const cultureOptions = ref([]);
+    const cultureLoading = ref(false);
+    const selectedCultureId = ref(null);
+    const allCultivarOptions = ref([]);
+    const cultivarOptions = ref([]);
+    const cultivarLoading = ref(false);
+
+    const applyCultureOptions = (options) => {
+      allCultureOptions.value = options;
+      cultureOptions.value = options;
+    };
 
     const formData = ref({
       culture: route.query.culture || '',
@@ -67,17 +143,132 @@ export default {
       endDate: route.query.endDate || ''
     });
 
-    const fileInput = ref(null);
+    const applyCultivarOptions = (options) => {
+      allCultivarOptions.value = options;
+      cultivarOptions.value = options;
 
-    const uploadFile = () => {
-      fileInput.value.click();
+      if (
+        formData.value.cultivar &&
+        !options.some((option) => option.value === formData.value.cultivar)
+      ) {
+        const customOption = {
+          label: formData.value.cultivar,
+          value: formData.value.cultivar
+        };
+        allCultivarOptions.value = [customOption, ...options];
+        cultivarOptions.value = [customOption, ...options];
+      }
     };
 
-    const handleFileUpload = (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        console.log('Файл загружен:', file.name);
+    const fetchCultureOptions = async () => {
+      cultureLoading.value = true;
+      try {
+        const response = await axios.get(
+          `${process.env.VUE_APP_BASE_URL}/api/fields-service/crops?page=0&size=5000&name=`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken.value}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const uniqueOptions = Array.from(
+          new Map(
+            (response.data || []).map((crop) => [
+              crop.id,
+              {
+                label: crop.name,
+                value: crop.id
+              }
+            ])
+          ).values()
+        ).sort((left, right) => left.label.localeCompare(right.label, 'ru'));
+
+        applyCultureOptions(uniqueOptions);
+
+        if (formData.value.culture) {
+          const selectedOption = uniqueOptions.find((option) => option.label === formData.value.culture);
+          selectedCultureId.value = selectedOption ? selectedOption.value : null;
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке справочника культур:', error);
+        $q.notify({
+          type: 'negative',
+          message: 'Не удалось загрузить справочник культур'
+        });
+      } finally {
+        cultureLoading.value = false;
       }
+    };
+
+    const fetchCultivarOptions = async (cultureId) => {
+      if (!cultureId) {
+        applyCultivarOptions([]);
+        return;
+      }
+
+      cultivarLoading.value = true;
+      try {
+        const response = await axios.get(
+          `${process.env.VUE_APP_BASE_URL}/api/fields-service/crops/${cultureId}/cultivars?page=0&size=5000&name=`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken.value}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const uniqueOptions = Array.from(
+          new Map(
+            (response.data || []).map((cultivar) => [
+              cultivar.name,
+              {
+                label: cultivar.name,
+                value: cultivar.name
+              }
+            ])
+          ).values()
+        ).sort((left, right) => left.label.localeCompare(right.label, 'ru'));
+
+        applyCultivarOptions(uniqueOptions);
+      } catch (error) {
+        console.error('Ошибка при загрузке справочника сортов:', error);
+        applyCultivarOptions([]);
+        $q.notify({
+          type: 'negative',
+          message: 'Не удалось загрузить справочник сортов'
+        });
+      } finally {
+        cultivarLoading.value = false;
+      }
+    };
+
+    const filterCultureOptions = (inputValue, update) => {
+      update(() => {
+        const needle = String(inputValue || '').trim().toLowerCase();
+        if (!needle) {
+          cultureOptions.value = allCultureOptions.value;
+          return;
+        }
+        cultureOptions.value = allCultureOptions.value.filter((option) =>
+          option.label.toLowerCase().includes(needle)
+        );
+      });
+    };
+
+    const filterCultivarOptions = (inputValue, update) => {
+      update(() => {
+        const needle = String(inputValue || '').trim().toLowerCase();
+        if (!needle) {
+          cultivarOptions.value = allCultivarOptions.value;
+          return;
+        }
+        cultivarOptions.value = allCultivarOptions.value.filter((option) =>
+          option.label.toLowerCase().includes(needle)
+        );
+      });
     };
 
     const saveRotation = async () => {
@@ -139,6 +330,34 @@ export default {
       }
     };
 
+    onMounted(() => {
+      fetchCultureOptions();
+    });
+
+    watch(
+      selectedCultureId,
+      async (nextCultureId, previousCultureId) => {
+        const selectedOption = allCultureOptions.value.find((option) => option.value === nextCultureId);
+        formData.value.culture = selectedOption ? selectedOption.label : '';
+
+        const previousCultivar = formData.value.cultivar;
+        await fetchCultivarOptions(nextCultureId);
+
+        if (!nextCultureId) {
+          formData.value.cultivar = '';
+          return;
+        }
+
+        if (
+          nextCultureId !== previousCultureId &&
+          previousCultivar &&
+          !allCultivarOptions.value.some((option) => option.value === previousCultivar)
+        ) {
+          formData.value.cultivar = '';
+        }
+      }
+    );
+
     return {
       seasonName,
       seasonId,
@@ -148,10 +367,14 @@ export default {
       contourId,
       formData,
       isEditMode,
-      fileInput,
-      uploadFile,
-      handleFileUpload,
-      saveRotation
+      saveRotation,
+      cultureOptions,
+      cultureLoading,
+      filterCultureOptions,
+      selectedCultureId,
+      cultivarOptions,
+      cultivarLoading,
+      filterCultivarOptions
     };
   }
 };
@@ -163,13 +386,11 @@ export default {
   margin-left: 0;
 }
 
-.text-h5 {
+.rotation-page-title {
   font-size: 1.5rem;
-  color: #333;
-}
-
-.font-bold {
-  font-weight: bold;
+  font-weight: 700;
+  color: var(--text-main, #1a2433);
+  line-height: 1.3;
 }
 
 .info-section {
@@ -184,10 +405,12 @@ export default {
 .label {
   font-weight: bold;
   width: 120px;
+  color: var(--text-main, #1a2433);
 }
 
 .value {
   flex-grow: 1;
+  color: var(--text-main, #1a2433);
 }
 
 .button-section {

@@ -293,7 +293,7 @@ try {
       'Content-Type': 'application/json'
     }
   });
-  meteoData.value = response.data;
+  meteoData.value = response.data.current || response.data;
 } catch (error) {
   console.error('Error fetching meteo data:', error.response ? error.response.data : error.message);
   if (error.response) {
@@ -819,6 +819,23 @@ try {
   display: none;
 }
 
+.q-pa-md {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.q-table {
+  border-radius: 12px;
+}
+
+.meteo-data {
+  border: 1px solid #e4ebf6;
+  padding: 20px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 22px rgba(19, 36, 58, 0.08);
+}
+
 
 
 .q-table th {
@@ -864,14 +881,6 @@ try {
   }
 }
 
-
-meteo-data {
-  border: 1px solid #ddd;
-  padding: 20px;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
 
 .meteo-data h2 {
   font-size: 24px;

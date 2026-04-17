@@ -1,26 +1,14 @@
-   # Используйте официальный образ Node.js в качестве базового образа
-   FROM node:16 as build
+# Dev-контейнер: Quasar dev + прокси /api на VUE_APP_GATEWAY_URL (см. docker-compose environment).
+FROM node:20-bookworm-slim
 
-   # Установите рабочую директорию для нашего приложения
-   WORKDIR /app
+WORKDIR /app
 
-   # Копируйте package.json и package-lock.json (или yarn.lock)
-   COPY package*.json ./
+COPY package*.json ./
+RUN npm ci 2>/dev/null || npm install
 
-   # Установите зависимости
-   RUN npm install
+COPY . .
 
-   # Копировать исходный код проекта в рабочую директорию образа
-   COPY . .
+EXPOSE 9000
 
-   # Установите пакет `quasar` глобально
-   RUN npm install -g @quasar/cli
-
-   # Соберите проект Vue интерфейса
-   RUN quasar build
-
-   # Укажите порт, который будет прослушиваться в контейнере Docker
-   EXPOSE 9000
-
-   # Запустите сервер раздачи статических файлов для вашего приложения
-   CMD ["quasar", "dev"]
+# host для dev-сервера задаётся в quasar.config.js (0.0.0.0 — для проброса порта из контейнера)
+CMD ["npm", "run", "dev"]

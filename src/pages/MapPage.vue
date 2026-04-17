@@ -1,32 +1,56 @@
 <template>
   <div class="map-container">
     <div id="map"></div>
-    <!-- 颜色选择对话框 -->
-    <!-- Диалог выбора цвета -->
     <q-dialog v-model="colorDialog" persistent>
-      <q-card style="width: 300px">
-        <q-card-section>
-          <div>
-            <q-input
-              dense
-              outlined
-              v-model="contourName"
-              label="Название контура"
-              class="q-mb-md"
+      <q-card class="contour-dialog">
+        <q-card-section class="q-pb-sm">
+          <div class="contour-dialog-title">Новый контур</div>
+          <div class="contour-dialog-subtitle">Шаг 1: задайте понятное название. Шаг 2: выберите цвет.</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-input
+            v-model="contourName"
+            dense
+            outlined
+            autofocus
+            label="Название контура"
+            hint="Например: Северный, Участок 2"
+            class="q-mb-md"
+          />
+
+          <div class="color-label">Цвет контура</div>
+          <div class="color-palette q-mb-sm">
+            <button
+              v-for="color in colorPresets"
+              :key="color"
+              type="button"
+              class="color-dot"
+              :class="{ active: selectedColor === color }"
+              :style="{ backgroundColor: color }"
+              @click="selectPresetColor(color)"
             />
           </div>
-          <div>
-            <text>Выберите цвет полигона:</text>
-            <q-color v-model="selectedColor" />
+
+          <q-expansion-item dense label="Свой цвет" header-class="custom-color-header">
+            <q-color v-model="selectedColor" no-header no-footer default-view="palette" />
+          </q-expansion-item>
+
+          <div class="contour-preview">
+            <span class="preview-dot" :style="{ backgroundColor: selectedColor }"></span>
+            <span class="preview-name">{{ contourName.trim() || "Название контура" }}</span>
           </div>
         </q-card-section>
+
         <q-card-actions align="right">
-          <q-btn flat dense label="Отмена" @click="cancelColorSelection" />
+          <q-btn flat dense no-caps label="Отмена" @click="cancelColorSelection" />
           <q-btn
-            flat
+            unelevated
             dense
-            label="Применить"
+            no-caps
+            label="Сохранить"
             color="primary"
+            :disable="!isContourNameValid"
             @click="applyColorSelection"
           />
         </q-card-actions>
@@ -41,6 +65,7 @@
       @postContours="postContours"
       @selectedField="updateSelectedField"
       @isEditMode="toggleEditMode"
+      @isPointDeleteMode="togglePointDeleteMode"
       :updateFields="updateFieldsInChild"
       :polygonIsFinished="polygonIsFinished"
     ></dropdown-or-add-season-field-buttons>
@@ -81,11 +106,11 @@ export default {
     const accessToken = userStore.state.access_token;
     const isDrawingEnabled = ref(false);
     const isEditMode = ref(false);
+    const isPointDeleteMode = ref(false);
     const activeField = ref(sessionStorage.getItem("activeField"));
     let deleteStack = []; // Стек для хранения истории всех действий
-    let isBorderVisible = true; // Флаг для отслеживания состояния рамки
     const contourName = ref("");
-    const isNameInvalid = computed(() => contourName.value.trim());
+    const isContourNameValid = computed(() => contourName.value.trim().length > 0);
 
     const selectedSeason = ref(
       JSON.parse(sessionStorage.getItem("activeSeason")) || null
@@ -93,9 +118,13 @@ export default {
     const selectedField = ref(
       JSON.parse(sessionStorage.getItem("activeField")) || null
     );
-    const colorDialog = ref(false); // 控制颜色选择对话框显示 Управление отображением диалогового окна выбора цвета
-    const selectedColor = ref("#ff0000"); // 默认选中的颜色 Выбранный по умолчанию цвет
+    const colorDialog = ref(false);
+    const selectedColor = ref("#2f6fdd");
+    const colorPresets = ["#2f6fdd", "#17b26a", "#f79009", "#ef4444", "#8b5cf6", "#14b8a6"];
     let currentLayer = null; // 当前绘制的多边形图层 Текущий слой нарисованных полигонов
+    const selectPresetColor = (color) => {
+      selectedColor.value = color;
+    };
     const toggleEditMode = (isEditModeOn) => {
       isEditMode.value = isEditModeOn;
     };
@@ -125,16 +154,25 @@ export default {
         )}&contourName=${encodeURIComponent(contour.name)}`
       );
     };
-    const handleFieldPopupClick = (contour) => {
+    const handleFieldPopupClick = () => {
       router.push({
-        name: 'FieldWeatherInfoPage', 
+        name: 'FieldWeatherInfoPage',
         query: {
           seasonId: selectedSeason.value.id,
           seasonName: selectedSeason.value.name,
           fieldId: selectedField.value.id,
           fieldName: selectedField.value.name,
-          contourId: contour.id,
-          contourName: contour.name
+        }
+      });
+    };
+    const handleFieldDzzPopupClick = () => {
+      router.push({
+        name: 'FieldDzzInfoPage',
+        query: {
+          seasonId: selectedSeason.value.id,
+          seasonName: selectedSeason.value.name,
+          fieldId: selectedField.value.id,
+          fieldName: selectedField.value.name,
         }
       });
     };
@@ -146,6 +184,17 @@ export default {
           map.value.removeLayer(layer);
         }
       });
+      selectedPolygon = null;
+    };
+
+    const getDefaultContourName = () => {
+      let contourCount = 0;
+      map.value.eachLayer((layer) => {
+        if (layer instanceof L.Polygon) {
+          contourCount += 1;
+        }
+      });
+      return `Контур ${contourCount + 1}`;
     };
     const contourItems = ref([]);
 
@@ -194,23 +243,36 @@ export default {
             polygon.feature.properties.id = contour.id;
 
             const popupContent = `
-          <div class="popup-content">
-          <strong class="contour-name">${contour.name}</strong>  <br><br>
-          <text>Принадлежность к полю:</text> <br>
-           <strong class="field-name">${
-             JSON.parse(sessionStorage.getItem("activeField")).name
-           }</strong>  <br>
-             <div class="button-container">
-          <button id="contour-info-${
-            contour.id
-          }" class="details-button">Смотреть<br>информацию<br> о контуре</button><br>
-          <button id="field-info-${
-            JSON.parse(sessionStorage.getItem("activeField")).id
-          }" class="details-button">Смотреть<br>информацию<br> о поле</button><br>
-          </div>
-          <div id="meteo-data-${
-            selectedField.value.id
-          }" class="meteo-data">Загрузка...</div>
+          <div class="popup-content premium-popup">
+            <div class="popup-head">
+              <div class="popup-title">${contour.name}</div>
+              <div class="popup-subtitle">Поле: ${
+                JSON.parse(sessionStorage.getItem("activeField")).name
+              }</div>
+            </div>
+            <div class="popup-actions">
+              <button id="contour-info-${
+                contour.id
+              }" class="details-button premium-action">
+                <span class="action-icon">C</span>
+                <span>Контур</span>
+              </button>
+              <button id="field-info-${
+                JSON.parse(sessionStorage.getItem("activeField")).id
+              }" class="details-button premium-action">
+                <span class="action-icon">M</span>
+                <span>Погода</span>
+              </button>
+              <button id="field-dzz-${
+                JSON.parse(sessionStorage.getItem("activeField")).id
+              }" class="details-button premium-action dzz-action">
+                <span class="action-icon">D</span>
+                <span>ДЗЗ</span>
+              </button>
+            </div>
+            <div id="meteo-data-${
+              selectedField.value.id
+            }" class="meteo-data premium-meteo-card">Загрузка...</div>
           </div>
         `;
 
@@ -218,31 +280,14 @@ export default {
             polygon.bindPopup(popupContent);
             // Обработчик клика по полигону
             polygon.on("click", (e) => {
+              if (isDrawInProgress()) return;
               if (isEditMode.value) {
-                console.log("Editing mode active. Opening edit modal...");
-                polygon.closePopup(); // Закрываем попап
-                currentLayer = polygon;
-                contourName.value = polygon.feature.properties.name;
-                colorDialog.value = true; // Открываем диалог редактирования
-                selectedPolygon = polygon;
-                isBorderVisible = !isBorderVisible;
-                if (isBorderVisible) {
-                  // Убираем рамку
-                  selectedPolygon.setStyle({ weight: 0 });
-                } else {
-                  // Добавляем рамку
-                  // Сбрасываем стиль предыдущего полигона
-                  console.log("prev ", previousPolygon);
-                  if (previousPolygon && previousPolygon !== polygon) {
-                    previousPolygon.setStyle({ weight: 0 }); // Убираем рамку с предыдущего полигона
-                  }
-                  selectedPolygon.setStyle({
-                    weight: 4,
-                    color: "black",
-                    opacity: 1,
-                  }); // Толщина и цвет рамки
-                  previousPolygon = polygon;
+                polygon.closePopup();
+                selectPolygon(polygon);
+                if (isPointDeleteMode.value) {
+                  removeNearestVertexFromSelectedPolygon(e.latlng);
                 }
+                return;
               } else {
                 console.log("Editing mode inactive. Opening popup...");
                 polygon.closePopup(); // Закрываем попап, если он был открыт
@@ -267,11 +312,12 @@ export default {
               const fieldInfoButton = document.getElementById(
                 `field-info-${selectedField.value.id}`
               );
-              fieldInfoButton.addEventListener("click", () =>
-                handleFieldPopupClick(
-                  JSON.parse(sessionStorage.getItem("activeField")).id
-                )
+              fieldInfoButton.addEventListener("click", () => handleFieldPopupClick());
+
+              const fieldDzzButton = document.getElementById(
+                `field-dzz-${selectedField.value.id}`
               );
+              fieldDzzButton.addEventListener("click", () => handleFieldDzzPopupClick());
 
               try {
                 const meteoResponse = await axios.get(
@@ -287,9 +333,21 @@ export default {
                 document.getElementById(
                   `meteo-data-${selectedField.value.id}`
                 ).innerHTML = `
-              <div class="meteo-item"><i class="meteo-icon fas fa-thermometer-half"></i>Температура: ${meteoData.temperature} °C</div>
-              <div class="meteo-item"><i class="meteo-icon fas fa-tint"></i>Влажность: ${meteoData.humidity} %</div>
-              <div class="meteo-item"><i class="meteo-icon fas fa-wind"></i>Скорость ветра: ${meteoData.wind_speed} м/с</div>
+              <div class="meteo-item"><span class="meteo-icon">T</span><span>Температура</span><strong>${
+                meteoData.temperature !== null && meteoData.temperature !== undefined
+                  ? Number(meteoData.temperature).toFixed(1)
+                  : "-"
+              } °C</strong></div>
+              <div class="meteo-item"><span class="meteo-icon">H</span><span>Влажность</span><strong>${
+                meteoData.humidity !== null && meteoData.humidity !== undefined
+                  ? Number(meteoData.humidity).toFixed(1)
+                  : "-"
+              } %</strong></div>
+              <div class="meteo-item"><span class="meteo-icon">W</span><span>Ветер</span><strong>${
+                meteoData.wind_speed !== null && meteoData.wind_speed !== undefined
+                  ? Number(meteoData.wind_speed).toFixed(1)
+                  : "-"
+              } м/с</strong></div>
             `;
               } catch (error) {
                 console.error("Error fetching meteo data:", error);
@@ -305,11 +363,6 @@ export default {
       }
     };
 
-    // Переход к странице добавления поля
-    const goToAddPage = () => {
-      router.push("/add_field");
-    };
-
     // Отмена выбора цвета
     const cancelColorSelection = () => {
       if (currentLayer) {
@@ -317,47 +370,143 @@ export default {
         currentLayer = null;
       }
       colorDialog.value = false;
-      contourName.value = null;
+      contourName.value = "";
     };
 
-    //     Диалог выбора цвета: Пользователь может выбрать цвет, который применяется к текущему полигону.
     const applyColorSelection = () => {
-      if (!isNameInvalid.value) {
-        return; // Если имя пустое, не закрываем окно
+      if (!isContourNameValid.value) {
+        return;
       }
       if (currentLayer) {
         currentLayer.setStyle({
           color: selectedColor.value,
           fillColor: selectedColor.value,
-          fillOpacity: 0.5,
+          fillOpacity: 0.35,
+          weight: 2.5,
         });
-        currentLayer.feature.properties.name = contourName.value;
+        currentLayer.feature.properties.name = contourName.value.trim();
         if (!drawnItems.hasLayer(currentLayer)) {
           drawnItems.addLayer(currentLayer);
         }
         currentLayer = null;
       }
       colorDialog.value = false;
-      contourName.value = null;
+      contourName.value = "";
       console.log("Selected color:", selectedColor.value);
     };
 
     //при нажатии на кнопку добавления контура в DropdownOrAddSeasonFieldButtons, рисовать полигон
     let drawControl = null;
     let drawnHandler = null; // Объявляем переменную для обработчика
+    let drawStopHandler = null;
     let selectedPolygon = null; // Переменная для хранения выделенного полигона
-    let previousPolygon = null; // Хранит ссылку на ранее выделенный полигон
+    const SELECTION_BORDER_COLOR = "#0f172a";
+    const DEFAULT_POLYGON_WEIGHT = 2.5;
+
+    const resetPolygonStyle = (polygon) => {
+      if (!polygon) return;
+      polygon.setStyle({
+        color: polygon.options.fillColor || polygon.options.color || "#2f6fdd",
+        weight: DEFAULT_POLYGON_WEIGHT,
+        fillOpacity: 0.35,
+      });
+    };
+
+    const selectPolygon = (polygon) => {
+      if (!polygon) return;
+      if (selectedPolygon && selectedPolygon !== polygon) {
+        resetPolygonStyle(selectedPolygon);
+      }
+      selectedPolygon = polygon;
+      polygon.setStyle({
+        weight: 4,
+        color: SELECTION_BORDER_COLOR,
+        fillOpacity: 0.4,
+      });
+    };
+
+    const isDrawInProgress = () =>
+      Boolean(drawControl && typeof drawControl.enabled === "function" && drawControl.enabled());
+
+    const setExistingPolygonsInteractive = (isInteractive) => {
+      if (!map.value) return;
+      map.value.eachLayer((layer) => {
+        if (!(layer instanceof L.Polygon)) return;
+        layer.options.interactive = isInteractive;
+        if (layer._path) {
+          layer._path.style.pointerEvents = isInteractive ? "auto" : "none";
+        }
+      });
+    };
+
+    const removeNearestVertexFromSelectedPolygon = (clickLatLng) => {
+      if (!selectedPolygon) {
+        $q.notify({
+          type: "warning",
+          message: "Сначала выберите контур",
+        });
+        return;
+      }
+      const latLngGroups = selectedPolygon.getLatLngs();
+      const ring = Array.isArray(latLngGroups?.[0]) ? latLngGroups[0] : latLngGroups;
+      if (!Array.isArray(ring) || ring.length <= 3) {
+        $q.notify({
+          type: "warning",
+          message: "У контура должно остаться минимум 3 точки",
+        });
+        return;
+      }
+      let nearestIndex = -1;
+      let nearestDistance = Infinity;
+      ring.forEach((vertex, idx) => {
+        const distance = clickLatLng.distanceTo(vertex);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = idx;
+        }
+      });
+
+      if (nearestIndex < 0 || nearestDistance > 35) {
+        $q.notify({
+          type: "info",
+          message: "Кликните ближе к нужной точке контура",
+        });
+        return;
+      }
+
+      const updatedRing = ring.filter((_, idx) => idx !== nearestIndex);
+      selectedPolygon.setLatLngs([updatedRing]);
+      selectPolygon(selectedPolygon);
+      $q.notify({
+        type: "positive",
+        message: "Точка удалена",
+      });
+    };
 
     const polygonIsFinished = ref(false);
+    const togglePointDeleteMode = (isEnabled) => {
+      isPointDeleteMode.value = isEnabled;
+    };
     const startDrawing = (isDrawing) => {
       isDrawingEnabled.value = isDrawing;
 
       if (isDrawingEnabled.value) {
         if (!drawControl) {
           drawControl = new L.Draw.Polygon(map.value, {
-            shapeOptions: { color: "blue" },
+            allowIntersection: true,
+            showArea: true,
+            metric: true,
+            maxPoints: 0,
+            finishOn: "dblclick",
+            shapeOptions: {
+              color: "#2f6fdd",
+              fillColor: "#2f6fdd",
+              fillOpacity: 0.2,
+              weight: 2.5,
+            },
           });
         }
+        setExistingPolygonsInteractive(false);
         drawControl.enable(); // Активирует режим рисования      }
 
         if (!drawnHandler) {
@@ -370,25 +519,12 @@ export default {
             layer.feature.properties = layer.feature.properties || {};
             layer.feature.properties.name = ""; // Временное пустое имя
             // Добавляем обработчик клика на полигон
-            layer.on("click", () => {
-              // Устанавливаем стиль для нового выбранного полигона
-              selectedPolygon = layer;
-              isBorderVisible = !isBorderVisible;
-              // Сбрасываем стиль предыдущего полигона
-              if (previousPolygon && previousPolygon !== polygon) {
-                previousPolygon.setStyle({ weight: 0 }); // Убираем рамку с предыдущего полигона
-              }
-              if (isBorderVisible) {
-                // Убираем рамку
-                selectedPolygon.setStyle({ weight: 0 });
-              } else {
-                // Добавляем рамку
-                selectedPolygon.setStyle({
-                  weight: 4,
-                  color: "black",
-                  opacity: 1,
-                }); // Толщина и цвет рамки
-              previousPolygon = polygon;
+            layer.on("click", (e) => {
+              if (isDrawInProgress()) return;
+              if (!isEditMode.value) return;
+              selectPolygon(layer);
+              if (isPointDeleteMode.value) {
+                removeNearestVertexFromSelectedPolygon(e.latlng);
               }
             });
             if (
@@ -462,13 +598,16 @@ export default {
             layer.setStyle({
               color: newPolygonColor,
               fillColor: newPolygonColor,
-              fillOpacity: 0.5,
+              fillOpacity: 0.35,
+              weight: 2.5,
             });
             console.log("Polygon coordinates:", layer.getLatLngs());
 
             drawnItems.addLayer(layer);
             map.value.addLayer(drawnItems);
             currentLayer = layer;
+            selectedColor.value = layer.options.fillColor || "#2f6fdd";
+            contourName.value = getDefaultContourName();
             // передаем сообщение о том что рисование было закончено из-за того что замкнули полигон, и не нужно нажимать на кнопку, чтобы выключить его
             polygonIsFinished.value = true;
             colorDialog.value = true;
@@ -481,14 +620,23 @@ export default {
             }
           });
           map.value?.on("draw:created", drawnHandler);
+          drawStopHandler = () => {
+            setExistingPolygonsInteractive(true);
+          };
+          map.value?.on("draw:drawstop", drawStopHandler);
         }
       } else {
         console.log("else");
         if (drawControl) {
+          setExistingPolygonsInteractive(true);
           drawControl.disable(); // Отключаем режим рисования
           if (drawnHandler) {
             map.value?.off("draw:created", drawnHandler);
             drawnHandler = null; // Сбрасываем обработчик
+          }
+          if (drawStopHandler) {
+            map.value?.off("draw:drawstop", drawStopHandler);
+            drawStopHandler = null;
           }
         }
       }
@@ -703,10 +851,10 @@ export default {
               message: "Ошибка при отправке данных!",
             });
           }
-          updateFieldsInChild.value = true; // Переключаем состояние на true
+          updateFieldsInChild.value = true;
           setTimeout(() => {
-            eventTriggered.value = false; // Переключаем обратно на false после задержки
-          }, 1000); // Задержка в 1 секунду}
+            updateFieldsInChild.value = false;
+          }, 300);
         }
       }
       if (deleteStack.length > 0) {
@@ -778,12 +926,12 @@ export default {
     };
     // Watch для обработки изменений activeField
     watch(selectedField, (newValue) => {
-      if (newValue) {
+      clearPolygons();
+      if (newValue?.id) {
         console.log("Рисуем полигоны для поля:", newValue);
-        fetchDataAndDrawPolygons(); // Функция рисует полигоны
+        fetchDataAndDrawPolygons();
       } else {
-        console.log("Удаляем полигоны с карты");
-        clearPolygons(); // Функция удаляет полигоны
+        console.log("Для нового поля сохраненных контуров пока нет");
       }
     });
 
@@ -817,9 +965,11 @@ export default {
     return {
       map,
       contourName,
-      goToAddPage,
       colorDialog,
       selectedColor,
+      colorPresets,
+      selectPresetColor,
+      isContourNameValid,
       cancelColorSelection,
       applyColorSelection,
       isDrawingEnabled,
@@ -830,6 +980,7 @@ export default {
       updateSelectedField,
       updateFieldsInChild,
       toggleEditMode,
+      togglePointDeleteMode,
       polygonIsFinished,
     };
   },
@@ -841,11 +992,92 @@ export default {
   position: relative;
   height: 100vh;
   width: 100%;
+  background: #eef3fb;
 }
 
 #map {
   height: 100vh !important;
   width: 100% !important;
+}
+
+.contour-dialog {
+  width: min(460px, calc(100vw - 24px));
+  border-radius: 14px;
+}
+
+.contour-dialog-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f3048;
+}
+
+.contour-dialog-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #647893;
+}
+
+.color-label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #324864;
+}
+
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.color-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(19, 36, 58, 0.18);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.18s ease;
+}
+
+.color-dot:hover {
+  transform: translateY(-1px);
+}
+
+.color-dot.active {
+  box-shadow: 0 0 0 3px rgba(47, 103, 216, 0.22), 0 6px 12px rgba(19, 36, 58, 0.2);
+}
+
+.custom-color-header {
+  padding-left: 0;
+  padding-right: 0;
+  min-height: 34px !important;
+  color: #4a5f7d;
+  font-size: 13px;
+}
+
+.contour-preview {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #dfe8f6;
+  background: #f8fbff;
+}
+
+.preview-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.preview-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2f435e;
 }
 
 .add-field-button {
@@ -856,12 +1088,17 @@ export default {
 }
 
 .details-button {
-  background-color: #007bff;
+  background: linear-gradient(135deg, #4d8cf7, #2f6fdd);
   color: #fff;
   border: none;
-  padding: 5px 10px;
+  padding: 6px 10px;
   cursor: pointer;
-  border-radius: 5px;
+  border-radius: 8px;
+  box-shadow: 0 5px 10px rgba(47, 111, 221, 0.3);
+  font-size: 13px;
+  font-weight: 700;
+  width: 112px;
+  line-height: 1.2;
 }
 
 .details-button:hover {
@@ -880,92 +1117,184 @@ export default {
 }
 
 .leaflet-top.leaflet-left {
-  /*top: 120px;*/
+  top: 78px;
+}
+
+.leaflet-top.leaflet-right {
+  top: 78px;
+}
+
+.leaflet-control-zoom {
+  box-shadow: 0 8px 20px rgba(19, 36, 58, 0.18);
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #f0f5ff;
+  color: #2f67d8;
+}
+
+.leaflet-div-icon.leaflet-editing-icon {
+  width: 14px !important;
+  height: 14px !important;
+  margin-left: -7px !important;
+  margin-top: -7px !important;
+  border-radius: 999px;
+  border: 2px solid #2f6fdd !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(19, 36, 58, 0.22);
+}
+
+.leaflet-draw-tooltip {
+  border: 1px solid #dce6f6;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #29415f;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(19, 36, 58, 0.14);
+}
+
+.leaflet-draw-tooltip:before {
+  border-right-color: rgba(255, 255, 255, 0.96);
+}
+
+.leaflet-interactive {
+  transition: fill-opacity 0.2s ease, stroke-width 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .leaflet-top.leaflet-left,
+  .leaflet-top.leaflet-right {
+    top: 118px;
+  }
 }
 
 .popup-content {
   font-family: Arial, sans-serif;
-  width: 300px;
-  padding: 10px;
+  width: 320px;
+  padding: 12px;
   background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 14px 28px rgba(19, 36, 58, 0.18);
+  border: 1px solid #e2ebf8;
 }
 
-.popup-content .contour-name {
-  font-size: 30px;
-  color: #333;
+.premium-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.field-name {
-  font-size: 16px;
-  color: #4b4949;
-  padding-top: 10px;
+.popup-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.popup-content .field-description {
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 10px;
+.popup-title {
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #21324d;
 }
 
-/*.popup-content .details-button {
-  display: inline-block;
-  padding: 8px 12px;
-  margin-bottom: 10px;
-  background-color: #007bff;
-  color: #ffffff;
-  text-align: center;
-  border-radius: 5px;
-  text-decoration: none;
-  cursor: pointer;
-}*/
-
-.popup-content .details-button:hover {
-  background-color: #0056b3;
+.popup-subtitle {
+  color: #5f718b;
+  font-size: 13px;
 }
 
-.popup-content .meteo-data {
-  margin-top: 10px;
+.popup-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.premium-action {
+  width: 100%;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  transition: transform 0.16s ease, box-shadow 0.2s ease;
+}
+
+.premium-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 14px rgba(47, 111, 221, 0.3);
+}
+
+.action-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.42);
 }
 
 .meteo-item {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 5px;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: #2b3d58;
+  margin-bottom: 6px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: #f6f9ff;
 }
 
 .meteo-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
   margin-right: 5px;
-  color: #007bff;
-}
-
-.button-container {
-  display: flex; /* Используем Flexbox для горизонтального расположения */
-  gap: 5px; /* Расстояние между кнопками */
-  height: 50px;
-  justify-content: center; /* Центровка по горизонтали */
-  margin-top: 20px;
-  margin-bottom: 20px;
+  color: #2f67d8;
+  border: 1px solid #d7e4ff;
+  background: #fff;
 }
 
 .details-button {
-  font-size: 13px; /* Размер шрифта на кнопках */
-  color: rgba(0, 0, 0, 0.726); /* Цвет текста на кнопках */
-  padding-left: 10px;
-  width: 110px;
-  font-weight: bold;
-
-  background-color: #007bff; /* Цвет фона на кнопках */
-  border: none; /* Убираем границу кнопки */
-  padding: 4px; /* Отступы внутри кнопки */
-  border-radius: 5px; /* Скругление углов кнопки */
-  line-height: 1; /* Меньший междустрочный отступ */
+  color: #fff;
+  background: linear-gradient(135deg, #4d8cf7, #2f6fdd);
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 5px 10px rgba(47, 111, 221, 0.3);
 }
 
 .details-button:hover {
   background-color: #0056b3; /* Цвет фона кнопки при наведении */
+}
+
+.dzz-action {
+  background: linear-gradient(135deg, #14b8a6, #0f9f90);
+  box-shadow: 0 5px 10px rgba(15, 159, 144, 0.28);
+}
+
+.premium-meteo-card {
+  margin-top: 2px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #e6edf9;
+  background: #fcfdff;
 }
 </style>

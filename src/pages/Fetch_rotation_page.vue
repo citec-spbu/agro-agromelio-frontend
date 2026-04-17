@@ -1,6 +1,7 @@
 <template>
-    <div v-show="cropData">
-        <q-card class="q-ma-md" flat bordered>
+    <q-page padding class="legacy-form-page">
+    <q-card v-show="cropData" class="legacy-form-card q-pa-md">
+        <q-card class="q-mb-md" flat bordered>
             <q-card-section>
                 <div><strong>{{ fieldName }}</strong></div>
             </q-card-section>
@@ -10,8 +11,9 @@
         <q-input v-model="cropData.endDate" label="Дата окончания (DD-MM-YYYY)" hint="Format: DD-MM-YYYY" mask="##-##-####"></q-input>
         <q-input v-model="cropData.description" label="Описание"></q-input>
 
-        <q-btn label="Передавать" @click="submitData" :disabled="isSubmitDisabled"></q-btn>
-    </div>
+        <q-btn label="Передавать" color="primary" @click="submitData" :disabled="isSubmitDisabled"></q-btn>
+    </q-card>
+    </q-page>
 </template>
 
 <script>
@@ -71,7 +73,7 @@ export default {
         //crops menu
         async function fetchCrops() {
             try {
-                const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields/crops?page=0&size=5000&name=`, {
+                const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/crops?page=0&size=5000&name=`, {
                     headers: {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
@@ -190,3 +192,14 @@ export default {
 }
 
 </script>
+
+<style scoped>
+.legacy-form-page {
+  display: flex;
+  justify-content: center;
+}
+
+.legacy-form-card {
+  width: min(760px, 100%);
+}
+</style>

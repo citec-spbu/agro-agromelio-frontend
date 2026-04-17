@@ -1,18 +1,18 @@
 <template>
-  <div class="fullscreen bg-blue text-white text-center q-pa-md flex flex-center">
+  <div class="fullscreen notfound text-center q-pa-md flex flex-center">
     <div>
-      <div style="font-size: 30vh">
+      <div class="code404">
         404
       </div>
 
-      <div class="text-h2" style="opacity:.4">
+      <div class="text-h2 subtitle">
         Oops. Nothing here...
       </div>
 
       <q-btn
         class="q-mt-xl"
-        color="white"
-        text-color="blue"
+        color="primary"
+        text-color="white"
         unelevated
         to="/"
         label="Go Home"
@@ -29,3 +29,20 @@ export default defineComponent({
   name: 'ErrorNotFound'
 })
 </script>
+
+<style scoped>
+.notfound {
+  background: radial-gradient(circle at top, #6ea8ff 0%, #2c4f9e 48%, #1c2d55 100%);
+  color: #fff;
+}
+
+.code404 {
+  font-size: clamp(120px, 24vw, 280px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.subtitle {
+  opacity: 0.72;
+}
+</style>

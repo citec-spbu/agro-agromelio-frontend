@@ -1,7 +1,10 @@
 <template>
-  <div class="all">
-    <h3 class="season-creation"><strong>Создание сезона</strong></h3>
-    <div v-show="formData" class="formingdata q-pa-md">
+  <q-page padding class="form-page">
+    <q-card class="form-card">
+      <q-card-section>
+        <h5 class="form-title q-my-none">Создание сезона</h5>
+      </q-card-section>
+      <q-card-section v-show="formData">
       <q-input
         v-model="formData.name"
         label="Название сезона"
@@ -34,8 +37,9 @@
         color="primary"
         class="full-width-button"
       ></q-btn>
-    </div>
-  </div>
+      </q-card-section>
+    </q-card>
+  </q-page>
 </template>
 
 <script>
@@ -140,19 +144,18 @@ export default {
 </script>
 
 <style>
-.date-entering {
-  line-height: 300px;
-}
-
-.all {
+.form-page {
   display: flex;
-  flex-direction: column;
-  width: 500px;
-  margin-left: 15px;
+  justify-content: center;
 }
 
-.season-creation {
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
+.form-card {
+  width: min(620px, 100%);
+}
+
+.form-title {
+  color: #24344f;
+  font-weight: 700;
 }
 
 .full-width-button {

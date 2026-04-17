@@ -1,5 +1,7 @@
 <template>
-  <div v-show="cropData" class="form-container q-pa-md">
+  <q-page padding class="legacy-form-page">
+  <q-card v-show="cropData" class="form-container q-pa-md">
+    <div class="text-h6 q-mb-md">Добавление культуры</div>
     <q-select
       v-model="computedFieldId"
       :options="fields"
@@ -58,7 +60,8 @@
       color="primary"
       class="full-width-button q-mt-md">
     </q-btn>
-  </div>
+  </q-card>
+  </q-page>
 </template>
 
 <script>
@@ -109,7 +112,7 @@ export default {
       //crops menu
       async function fetchCrops() {
           try {
-              const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields/crops?page=0&size=5000&name=`, {
+              const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/crops?page=0&size=5000&name=`, {
                   headers: {
                       'Authorization': `Bearer ${accessToken}`,
                       'Content-Type': 'application/json'
@@ -244,8 +247,9 @@ export default {
 
 <style>
 .form-container {
-  max-width: 400px;
-  margin-left: 0 ;
+  max-width: 540px;
+  margin: 0 auto;
+  border-radius: 14px;
 }
 
 .q-mb-md {

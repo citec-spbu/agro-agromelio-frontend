@@ -1,7 +1,9 @@
 <template>
-  <q-banner v-show="flag">Данных нет. Введите данные профиля в настройках</q-banner>
-  <div v-if="myrole === 'worker'" class="row">
-    <q-list separator padding class="col-12 col-md-5 q-mx-auto">
+  <q-page padding class="profile-page">
+  <ThemePreferenceSection class="q-mb-md" />
+  <q-banner v-show="flag" class="profile-banner">Данных нет. Введите данные профиля в настройках</q-banner>
+  <div v-if="myrole === 'worker'" class="row justify-center">
+    <q-list separator padding class="col-12 col-md-6 profile-list">
       <q-item>
         <q-item-section class="mytext">
           <q-item-label> {{ workData.name }}</q-item-label>
@@ -36,8 +38,8 @@
     </q-list>
   </div>
 
-  <div v-if="myrole === 'organization'" class="row">
-    <q-list separator padding class="col-12 col-md-5 q-mx-auto">
+  <div v-if="myrole === 'organization'" class="row justify-center">
+    <q-list separator padding class="col-12 col-md-6 profile-list">
       <q-item>
         <q-item-section class="mytext">
           <q-item-label> {{ orgData.name }}</q-item-label>
@@ -78,14 +80,18 @@
 
     </q-list>
   </div>
+  </q-page>
 </template>
 
 <script>
 import { postToServer } from 'src/axiosRequest';
 import { userStore } from 'src/usage';
 import { reactive, ref } from 'vue';
+import ThemePreferenceSection from 'src/components/ThemePreferenceSection.vue';
 
 export default {
+  components: { ThemePreferenceSection },
+
   setup() {
     const myrole = userStore.getState().role;
     const orgData = reactive({ name: '', description: '', city: '', inn: '', phone_number: '', website: '' });
@@ -119,7 +125,25 @@ export default {
 </script>
 
 <style scoped>
+.profile-page {
+  padding-top: 10px;
+}
+
+.profile-banner {
+  margin: 0 auto 16px;
+  max-width: 860px;
+  border-radius: 10px;
+  background: #fff7db;
+  border: 1px solid #f6e5a9;
+}
+
+.profile-list {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #e5ecf7;
+}
+
 .mytext {
-  font-size: 1.3rem;
+  font-size: 1.1rem;
 }
 </style>

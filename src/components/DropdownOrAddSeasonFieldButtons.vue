@@ -1,106 +1,113 @@
 <template>
-  <!--  кнопка добавления сезона
-   если хоть один сезон есть, скрыть -->
   <q-btn
-    v-if="seasonsList.length === 0"
-    fab
+    v-if="!isPanelVisible"
+    round
     color="primary"
-    icon="add"
-    class="add-button"
-    @click="goToSeasonPage"
-  >
-    <div class="button-overlay">
-      <p>Добавить сезон</p>
+    icon="tune"
+    class="panel-fab"
+    @click="isPanelVisible = true"
+  />
+
+  <transition name="panel-float" appear>
+    <div v-show="isPanelVisible" class="control-panel" :class="{ compact: isCompact }">
+      <div class="panel-header">
+        <div class="panel-title">Управление полем</div>
+        <div class="panel-header-actions">
+          <q-btn flat round dense class="panel-icon-btn" :icon="isCompact ? 'unfold_more' : 'unfold_less'" @click="isCompact = !isCompact" />
+          <q-btn flat round dense class="panel-icon-btn" icon="close" @click="isPanelVisible = false" />
+        </div>
+      </div>
+
+      <div class="status-row">
+        <q-chip
+          square
+          dense
+          class="status-chip status-chip-season"
+          :class="{ 'status-chip-inactive': !activeSeason }"
+          :icon="activeSeason ? 'event_available' : 'event_busy'"
+          :color="activeSeason ? 'positive' : 'grey-8'"
+          text-color="white"
+        >
+          {{ activeSeason ? `Сезон: ${activeSeason.name}` : "Сезон не выбран" }}
+        </q-chip>
+        <q-chip
+          square
+          dense
+          class="status-chip status-chip-field"
+          :class="{ 'status-chip-inactive': !activeField }"
+          :icon="activeField ? 'crop_square' : 'indeterminate_check_box'"
+          :color="activeField ? 'info' : 'grey-8'"
+          text-color="white"
+        >
+          {{ activeField ? `Поле: ${activeField.name}` : "Поле не выбрано" }}
+        </q-chip>
+      </div>
+
+      <div v-show="!isCompact" class="panel-body">
+        <q-select
+          v-model="selectedSeasonId"
+          :options="seasonOptions"
+          emit-value
+          map-options
+          option-value="value"
+          option-label="label"
+          label="Выбор сезона"
+          outlined
+          dense
+          class="control-select"
+          @update:model-value="handleSeasonChange"
+        />
+
+        <q-select
+          v-model="selectedFieldId"
+          :options="fieldOptions"
+          emit-value
+          map-options
+          option-value="value"
+          option-label="label"
+          label="Выбор поля"
+          outlined
+          dense
+          class="control-select"
+          :disable="!activeSeason"
+          @update:model-value="handleFieldChange"
+        />
+
+        <div class="panel-actions">
+          <q-btn color="primary" icon="add_circle" label="Сезон" no-caps class="action-btn" @click="goToSeasonPage" />
+          <q-btn color="primary" icon="add_box" label="Поле" no-caps class="action-btn" :disable="!activeSeason" @click="openCreateFieldDialog" />
+          <q-btn flat color="grey-8" icon="restart_alt" label="Сброс" no-caps class="action-btn" @click="clearSelections" />
+        </div>
+      </div>
     </div>
-  </q-btn>
-  <!-- если хоть одно поле есть, скрыть
-   показывать после того как выбран сезон -->
-  <q-btn
-    v-if="fieldList.length === 0 && activeSeason"
-    fab
-    color="primary"
-    icon="add"
-    class="add-button"
-    @click="goToFieldPage"
-  >
-    <div class="button-overlay">
-      <p>Добавить поле</p>
-    </div>
-  </q-btn>
-  <!-- seasons получаем в onmounted, отображать список если массив не пустой, иначе есть только кнопка добавления сезона
-   если нет полей есть кнопка добавления поля -->
-  <div class="season-field">
-    <!-- выбираем поле, появляется после того как выбрали сезон и если полей нет, то отображается кнопка добавления поля -->
-    <div v-if="fieldList.length !== 0" class="dropdown-button q-pa-md">
-      <q-btn-dropdown
-        v-if="fieldList.length !== 0"
-        color="primary"
-        label="Выбор поля"
-        persistent
-      >
-        <q-list>
-          <q-item
-            v-for="field in filteredFields"
-            :key="field.id"
-            clickable
-            @click="chooseActiveField(field)"
-            dense
-            :class="{
-              'active-item': activeField && activeField.id === field.id,
-            }"
-          >
-            <q-item-section>
-              <q-item-label>{{ field.name }}</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item
-            v-if="!activeField"
-            clickable
-            v-close-popup
-            @click="goToFieldPage()"
-            dense
-            class="add-season-field-item"
-          >
-            <q-item-section>
-              <q-item-label>ДОБАВИТЬ ПОЛЕ</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-btn-dropdown>
-    </div>
-    <div v-if="seasonsList.length !== 0" class="dropdown-button q-pa-md">
-      <q-btn-dropdown color="primary" label="Выбор сезона" persistent>
-        <q-list>
-          <q-item
-            v-for="season in filteredSeasons"
-            :key="season.id"
-            clickable
-            @click="chooseActiveSeason(season)"
-            dense
-            :class="{
-              'active-item': activeSeason && activeSeason.id === season.id,
-            }"
-          >
-            <q-item-section>
-              <q-item-label>{{ season.name }}</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item
-            v-if="!activeSeason"
-            clickable
-            v-close-popup
-            @click="goToSeasonPage()"
-            dense
-            class="add-season-field-item"
-          >
-            <q-item-section>
-              <q-item-label>ДОБАВИТЬ СЕЗОН</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-btn-dropdown>
-    </div>
-  </div>
+  </transition>
+
+  <q-dialog v-model="isFieldDialogOpen" persistent>
+    <q-card class="field-create-dialog">
+      <q-card-section class="q-pb-sm">
+        <div class="dialog-title">Создать поле</div>
+        <div class="dialog-subtitle">Поле будет сразу выбрано, после этого можно мгновенно рисовать контуры.</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <q-input v-model="newField.name" label="Название поля" outlined dense autofocus class="q-mb-sm" />
+        <q-input v-model="newField.description" label="Описание поля" outlined dense type="textarea" autogrow />
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat no-caps label="Отмена" color="grey-7" @click="closeCreateFieldDialog" />
+        <q-btn
+          unelevated
+          no-caps
+          label="Создать и выбрать"
+          color="primary"
+          :disable="isCreateFieldDisabled"
+          @click="createFieldAndSelect"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
   <map-page-edit-buttons
     v-if="activeField && activeSeason"
     @startDrawing="startDrawing"
@@ -109,24 +116,17 @@
     @postContours="postContours"
     @isEditMode="toggleEditMode"
     :polygonIsFinished="localPolygonIsFinished"
-  ></map-page-edit-buttons>
+  />
 </template>
+
 <script>
-import { useRouter, useRoute } from "vue-router";
+import { useRouter } from "vue-router";
 import { userStore } from "src/usage";
-
 import axios from "axios";
-import {
-  ref,
-  onMounted,
-  computed,
-  onBeforeUnmount,
-  watch,
-  defineProps,
-} from "vue";
-
+import { ref, onMounted, computed, watch } from "vue";
 import { useQuasar } from "quasar";
 import MapPageEditButtons from "./MapPageEditButtons.vue";
+
 export default {
   name: "DropdownOrAddSeasonFieldButtons",
   components: {
@@ -144,199 +144,234 @@ export default {
   },
   setup(props, { emit }) {
     const router = useRouter();
-    const route = useRoute();
     const $q = useQuasar();
     const accessToken = userStore.state.access_token;
-    // Получаем доступ к методам карты
-    const mapRef = ref(null);
     const activeSeason = ref(null);
     const activeField = ref(null);
-    const seasonsList = ref([]); // массив сезонов
-    const fieldListAdded = ref([]); // массив полей добавленных но не отправленных на сервер
-    // !!!!!!!!!!!если отправили на сервер поле, то удалять
-    const fieldListSaved = ref([]); // массив полей полученных с сервера
-    const fieldList = computed(() => [
-      ...fieldListAdded.value,
-      ...fieldListSaved.value,
-    ]);
+    const seasonsList = ref([]);
+    const fieldListAdded = ref([]);
+    const fieldListSaved = ref([]);
+    const selectedSeasonId = ref(null);
+    const selectedFieldId = ref(null);
+    const isPanelVisible = ref(true);
+    const isCompact = ref(false);
+    const isFieldDialogOpen = ref(false);
+    const newField = ref({
+      name: "",
+      description: "",
+    });
 
-    const startDrawing = (isDrawing) => {
-      emit("startDrawing", isDrawing);
-    };
-    const removeSelectedPolygon = () => {
-      emit("removeSelectedPolygon");
-    };
-    const undoLastAction = () => {
-      emit("undoLastAction");
-    };
-    const postContours = () => {
-      emit("postContours");
-    };
-    const toggleEditMode = (isEditMode) => {
-      emit("isEditMode", isEditMode);
-    };
-    const goToSeasonPage = () => {
-      console.log("Go to season page");
-      router.push("/add_season");
-      // делать активным сезон который сейчас добавили
-    };
-    const goToFieldPage = () => {
-      console.log("Go to field page");
-      router.push("/add_field");
-      // делать активным поле которое сейчас добавили
-    };
-    // если выбран активный сезон, то возвращать его, иначе весь список
-    const filteredSeasons = computed(() => {
-      if (activeSeason.value) {
-        return [activeSeason.value];
-      }
-      return seasonsList.value;
+    const normalizeDraftFields = (fields) =>
+      fields.map((field) => ({
+        ...field,
+        __localId: field.__localId || `draft-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      }));
+
+    const getFieldKey = (field) => field.id ?? field.__localId;
+    const fieldList = computed(() => {
+      if (!activeSeason.value?.id) return [];
+      const localForSeason = fieldListAdded.value.filter((field) => field.seasonId === activeSeason.value.id);
+      return [...localForSeason, ...fieldListSaved.value];
     });
-    // если выбрано активное поле, то возвращать его, иначе весь список
-    const filteredFields = computed(() => {
-      if (activeField.value) {
-        return [activeField.value];
-      }
-      return fieldList.value;
-    });
+    const seasonOptions = computed(() => seasonsList.value.map((season) => ({ label: season.name, value: season.id })));
+    const fieldOptions = computed(() => fieldList.value.map((field) => ({ label: field.name, value: getFieldKey(field) })));
+    const isCreateFieldDisabled = computed(
+      () => !activeSeason.value || !newField.value.name.trim() || !newField.value.description.trim()
+    );
+
+    const startDrawing = (isDrawing) => emit("startDrawing", isDrawing);
+    const removeSelectedPolygon = () => emit("removeSelectedPolygon");
+    const undoLastAction = () => emit("undoLastAction");
+    const postContours = () => emit("postContours");
+    const toggleEditMode = (isEditMode) => emit("isEditMode", isEditMode);
+
+    const goToSeasonPage = () => router.push("/add_season");
+
     const fetchSeasons = async () => {
       try {
-        const response = await axios.get(
-          `${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        console.log(response.data);
+        const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        });
         seasonsList.value = response.data;
-      } catch (error) {
-        console.log("Didn't get seasons");
+      } catch (_error) {
         seasonsList.value = [];
       }
     };
-    const fetchFields = async (id) => {
+
+    const fetchFields = async (seasonId) => {
       try {
-        const response = await axios.get(
-          `${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons/${id}/fields`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        console.log("fields on server ", response.data);
+        const response = await axios.get(`${process.env.VUE_APP_BASE_URL}/api/fields-service/seasons/${seasonId}/fields`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        });
         fieldListSaved.value = response.data;
-      } catch (error) {
-        console.log("Didn't get fields");
+      } catch (_error) {
+        fieldListSaved.value = [];
       }
+    };
+
+    const handleSeasonChange = (seasonId) => {
+      const season = seasonsList.value.find((item) => item.id === seasonId) || null;
+      activeSeason.value = season;
+      selectedSeasonId.value = season?.id || null;
+      activeField.value = null;
+      selectedFieldId.value = null;
+      sessionStorage.removeItem("activeField");
+      emit("selectedField");
+
+      if (season) {
+        sessionStorage.setItem("activeSeason", JSON.stringify(season));
+        fetchFields(season.id);
+      } else {
+        sessionStorage.removeItem("activeSeason");
+        fieldListSaved.value = [];
+      }
+    };
+
+    const handleFieldChange = (fieldId) => {
+      const field = fieldList.value.find((item) => getFieldKey(item) === fieldId) || null;
+      activeField.value = field;
+      selectedFieldId.value = field ? getFieldKey(field) : null;
+      if (field) {
+        sessionStorage.setItem("activeField", JSON.stringify(field));
+      } else {
+        sessionStorage.removeItem("activeField");
+      }
+      emit("selectedField");
+    };
+
+    const clearSelections = () => {
+      activeSeason.value = null;
+      activeField.value = null;
+      selectedSeasonId.value = null;
+      selectedFieldId.value = null;
+      fieldListSaved.value = [];
+      sessionStorage.removeItem("activeSeason");
+      sessionStorage.removeItem("activeField");
+      emit("selectedField");
+    };
+
+    const closeCreateFieldDialog = () => {
+      isFieldDialogOpen.value = false;
+      newField.value = {
+        name: "",
+        description: "",
+      };
+    };
+
+    const openCreateFieldDialog = () => {
+      if (!activeSeason.value) {
+        $q.notify({
+          type: "warning",
+          message: "Сначала выберите сезон",
+        });
+        return;
+      }
+      isFieldDialogOpen.value = true;
+    };
+
+    const createFieldAndSelect = () => {
+      if (isCreateFieldDisabled.value) return;
+
+      const normalizedName = newField.value.name.trim();
+      const normalizedDescription = newField.value.description.trim();
+      const duplicateField = fieldList.value.some(
+        (field) => String(field.name || "").toLowerCase() === normalizedName.toLowerCase()
+      );
+      if (duplicateField) {
+        $q.notify({
+          type: "warning",
+          message: "Поле с таким названием уже есть в этом сезоне",
+        });
+        return;
+      }
+
+      const draftField = {
+        name: normalizedName,
+        description: normalizedDescription,
+        seasonId: activeSeason.value.id,
+        __localId: `draft-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      };
+      const updatedDrafts = [...fieldListAdded.value, draftField];
+      fieldListAdded.value = updatedDrafts;
+      sessionStorage.setItem("fields", JSON.stringify(updatedDrafts));
+      activeField.value = draftField;
+      selectedFieldId.value = draftField.__localId;
+      sessionStorage.setItem("activeField", JSON.stringify(draftField));
+      emit("selectedField");
+      closeCreateFieldDialog();
+      $q.notify({
+        type: "positive",
+        message: "Поле создано и выбрано. Теперь можно рисовать контуры.",
+      });
     };
 
     watch(
       () => props.updateFields,
       (newValue) => {
-        //обновляем поля которые сохранены локально и на сервере, когда отправили поле с контурами на сервер
-
-        if (newValue) {
-          // Выполняем какую-то логику
-          fieldListAdded.value = sessionStorage.getItem("fields")
-            ? JSON.parse(sessionStorage.getItem("fields"))
-            : [];
-          console.log("Updated local fields:", fieldListAdded.value);
-
-          const activeSeasonData = sessionStorage.getItem("activeSeason");
-          if (activeSeasonData) {
-            fetchFields(JSON.parse(activeSeasonData)["id"]);
-            //fieldList.value = fieldListAdded.value.concat(fieldListSaved.value);
-          }
+        if (!newValue) return;
+        fieldListAdded.value = sessionStorage.getItem("fields")
+          ? normalizeDraftFields(JSON.parse(sessionStorage.getItem("fields")))
+          : [];
+        const seasonRaw = sessionStorage.getItem("activeSeason");
+        if (seasonRaw) {
+          const season = JSON.parse(seasonRaw);
+          fetchFields(season.id);
         }
       }
     );
+
     onMounted(async () => {
-      if (sessionStorage.getItem("activeField")) {
-        activeField.value = JSON.parse(sessionStorage.getItem("activeField"));
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        isCompact.value = true;
       }
+      await fetchSeasons();
       if (sessionStorage.getItem("activeSeason")) {
         activeSeason.value = JSON.parse(sessionStorage.getItem("activeSeason"));
-
-        if (sessionStorage.getItem("fields")) {
-          fieldListAdded.value = JSON.parse(sessionStorage.getItem("fields"));
-        }
-        fetchFields(activeSeason.value.id);
+        selectedSeasonId.value = activeSeason.value?.id || null;
+        await fetchFields(activeSeason.value.id);
       }
-
-      fetchSeasons();
-      console.log("seasons:", seasonsList.value);
-      console.log("fields:", fieldList.value);
+      if (sessionStorage.getItem("fields")) {
+        fieldListAdded.value = normalizeDraftFields(JSON.parse(sessionStorage.getItem("fields")));
+      }
+      if (sessionStorage.getItem("activeField")) {
+        activeField.value = JSON.parse(sessionStorage.getItem("activeField"));
+        selectedFieldId.value = activeField.value ? getFieldKey(activeField.value) : null;
+      }
     });
 
-    const chooseActiveSeason = (season) => {
-      if (!activeSeason.value) {
-        activeSeason.value = season;
-        sessionStorage.setItem(
-          "activeSeason",
-          JSON.stringify(activeSeason.value)
-        );
-        // получаем список полей сезона
-        fetchFields(activeSeason.value.id);
-        console.log("fethcing fields", fieldListSaved.value);
-      } else {
-        activeSeason.value = null;
-        sessionStorage.removeItem("activeSeason");
-        //очищаем добавленные но не отправленные на сервер сезоны и аактивный сезон
-        if (activeField.value) {
-          activeField.value = null;
-          sessionStorage.removeItem("activeField");
-          sessionStorage.removeItem("fields");
-          emit("selectedField");
-          fieldListAdded.value = [];
-          fieldListSaved.value = [];
-        }
-      }
-    };
-
-    const chooseActiveField = (field) => {
-      if (!activeField.value) {
-        activeField.value = field;
-        sessionStorage.setItem(
-          "activeField",
-          JSON.stringify(activeField.value)
-        );
-      } else {
-        activeField.value = null;
-        sessionStorage.removeItem("activeField");
-        //fieldList.value = fieldListAdded.value.concat(fieldListSaved.value);
-        activeSeason.value = JSON.parse(sessionStorage.getItem("activeSeason"));
-        fetchFields(activeSeason.value.id);
-      }
-      console.log(activeField.value);
-      emit("selectedField");
-    };
-
-    // Локальное состояние на основе пропса
     const localPolygonIsFinished = ref(props.polygonIsFinished);
-
-    // Слежение за изменением пропса и обновление локального состояния
     watch(
       () => props.polygonIsFinished,
       (newVal) => {
         localPolygonIsFinished.value = newVal;
       }
     );
+
     return {
-      goToSeasonPage,
-      goToFieldPage,
-      activeField,
       activeSeason,
-      seasonsList,
-      fieldList,
-      chooseActiveSeason,
-      chooseActiveField,
-      filteredSeasons,
-      filteredFields,
+      activeField,
+      selectedSeasonId,
+      selectedFieldId,
+      isPanelVisible,
+      isCompact,
+      seasonOptions,
+      fieldOptions,
+      handleSeasonChange,
+      handleFieldChange,
+      clearSelections,
+      goToSeasonPage,
+      isFieldDialogOpen,
+      newField,
+      isCreateFieldDisabled,
+      openCreateFieldDialog,
+      closeCreateFieldDialog,
+      createFieldAndSelect,
       startDrawing,
       removeSelectedPolygon,
       undoLastAction,
@@ -347,62 +382,203 @@ export default {
   },
 };
 </script>
+
 <style scoped>
-.season-field {
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  z-index: 1000;
+.panel-fab {
+  position: fixed;
+  top: calc(var(--app-header-height, 64px) + 12px);
+  right: 14px;
+  z-index: 1300;
+  box-shadow: 0 10px 22px rgba(19, 36, 58, 0.22);
+}
+
+.control-panel {
+  position: fixed;
+  right: 14px;
+  top: calc(var(--app-header-height, 64px) + 12px);
+  z-index: 1300;
   display: flex;
-  flex-direction: row;
-  gap: 20px;
+  flex-direction: column;
+  gap: 8px;
+  width: 320px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(19, 36, 58, 0.18);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  transform-origin: top right;
+  will-change: transform, opacity;
 }
 
-.dropdown-button {
-  position: relative;
-  /* Выпадающий список позиционируется относительно кнопки */
-  /* width: 100%; */
-  /* Обеспечивает ширину контейнера */
-  /* display: flex;
-    flex-direction: column;
-    align-items: flex-start;*/
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.add-season-field-item {
-  background-color: #222c3c;
-  color: white;
-  z-index: 9999; /* Увеличить приоритет */
-  pointer-events: all; /* Включить кликабельность */
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
-.add-button {
-  position: absolute;
-  bottom: 60px;
-  left: 10px;
-  z-index: 1000;
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #25344d;
+  letter-spacing: 0.2px;
 }
 
-.button-overlay {
-  position: absolute;
-  background-color: #222c3c;
-  display: none;
-  text-align: center;
-  left: 90%;
-  font-size: 10px;
-  border-radius: 4px;
-  font-family: Arial, sans-serif;
-  white-space: nowrap;
+.status-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.add-button:hover .button-overlay {
-  display: block;
-  width: 110px;
-  height: 25px;
-  padding-right: 10px;
-  padding-left: 10px;
+.status-chip {
+  width: 100%;
+  justify-content: flex-start;
+  font-weight: 600;
 }
 
-.active-item {
-  background-color: rgb(152, 161, 182);
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-select :deep(.q-field__control) {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.control-select :deep(.q-field__control:hover) {
+  box-shadow: 0 0 0 2px rgba(47, 103, 216, 0.12);
+}
+
+.panel-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.action-btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: transform 0.16s ease, box-shadow 0.2s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(30, 74, 155, 0.2);
+}
+
+.control-panel.compact {
+  width: 300px;
+}
+
+@media (max-width: 768px) {
+  .control-panel {
+    width: calc(100% - 24px);
+    left: 12px;
+    right: 12px;
+  }
+
+  .control-panel.compact {
+    width: calc(100% - 24px);
+  }
+
+  .panel-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel-float-enter-active,
+.panel-float-leave-active {
+  transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1), transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.panel-float-enter-from,
+.panel-float-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+}
+
+.field-create-dialog {
+  width: min(520px, calc(100vw - 24px));
+  border-radius: 14px;
+}
+
+.dialog-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #22314b;
+}
+
+.dialog-subtitle {
+  margin-top: 4px;
+  color: #61748f;
+  font-size: 13px;
+}
+
+.panel-icon-btn {
+  color: #5c6b82;
+}
+</style>
+
+<style>
+/* Тёмная тема: панель и чипы сезон/поле должны оставаться читаемыми */
+.body--dark .control-panel {
+  background: rgba(28, 36, 50, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.body--dark .panel-title {
+  color: #e8edf5;
+}
+
+.body--dark .panel-icon-btn {
+  color: #b8c5d9;
+}
+
+.body--dark .control-select :deep(.q-field__control) {
+  background: rgba(36, 48, 66, 0.95);
+}
+
+.body--dark .control-select :deep(.q-field__native),
+.body--dark .control-select :deep(.q-field__input) {
+  color: #e8edf5;
+}
+
+.body--dark .control-select :deep(.q-field__label) {
+  color: #9aa8bc;
+}
+
+.body--dark .status-chip-season.q-chip--colored {
+  background: #2e7d32 !important;
+  color: #fff !important;
+}
+
+.body--dark .status-chip-field.q-chip--colored {
+  background: #1565c0 !important;
+  color: #fff !important;
+}
+
+.body--dark .status-chip-inactive {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #f0f4fa !important;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.body--dark .field-create-dialog .dialog-title {
+  color: #e8edf5;
+}
+
+.body--dark .field-create-dialog .dialog-subtitle {
+  color: #9aa8bc;
 }
 </style>

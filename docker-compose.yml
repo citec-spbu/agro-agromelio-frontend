@@ -8,6 +8,12 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+    # Внутри контейнера localhost:8080 — это не шлюз. Прокси Quasar (см. quasar.config.js) должен
+    # ходить на сервис gateway в той же сети (container_name из agro-api-gateway/docker-compose.yml).
+    environment:
+      VUE_APP_GATEWAY_URL: http://api-gateway:8080
+      # В iframe грузится из браузера пользователя (не из контейнера). Нужен проброс 9001 у agro-analytics-frontend.
+      VUE_APP_ANALYTICS_MFE_URL: http://localhost:9001
     networks:
       - agronetwork
 

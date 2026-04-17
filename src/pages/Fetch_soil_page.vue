@@ -1,14 +1,20 @@
 <template>
-  <div class="q-gutter-sm" style="display: flex; flex-wrap: wrap;">
-    <div v-for="(column, index) in soilColumns" :key="index" class="q-ma-sm" style="flex: 1 1 200px;">
+  <q-page padding class="legacy-form-page">
+  <q-card class="legacy-form-card q-pa-md">
+  <div class="q-gutter-sm legacy-grid">
+    <div v-for="(column, index) in soilColumns" :key="index" class="q-ma-sm legacy-cell">
       <q-input v-model="soilData[column.name]" :label="column.label" dense
         :hint="column.name === 'sampleDate' ? 'Format: dd-mm-yyyy' : ''"
         :placeholder="column.name === 'sampleDate' ? 'dd-mm-yyyy' : ''"></q-input>
     </div>
   </div>
 
-  <q-btn label="Готов" @click="submitData" :disabled="isSubmitDisabled"></q-btn>
-  <q-btn label="Удалить" @click="deleteData"></q-btn>
+  <div class="row q-gutter-sm q-mt-sm">
+    <q-btn label="Готов" color="primary" @click="submitData" :disabled="isSubmitDisabled"></q-btn>
+    <q-btn label="Удалить" outline color="negative" @click="deleteData"></q-btn>
+  </div>
+  </q-card>
+  </q-page>
 </template>
 
 <script>
@@ -190,3 +196,23 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.legacy-form-page {
+  display: flex;
+  justify-content: center;
+}
+
+.legacy-form-card {
+  width: min(980px, 100%);
+}
+
+.legacy-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.legacy-cell {
+  flex: 1 1 220px;
+}
+</style>
