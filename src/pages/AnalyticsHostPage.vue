@@ -14,6 +14,7 @@
 
 <script>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import { userStore } from 'src/usage';
 import AnalyticsDashboard from 'components/AnalyticsDashboard.vue';
 
@@ -31,6 +32,7 @@ export default {
   components: { AnalyticsDashboard },
 
   setup() {
+    const $q = useQuasar();
     const frameRef = ref(null);
 
     const mfeUrl = computed(() => {
@@ -63,6 +65,7 @@ export default {
       return {
         apiBase: apiBase.value,
         authorization: bearerFromStore(),
+        dark: $q.dark.isActive,
       };
     }
 
@@ -91,7 +94,7 @@ export default {
     }
 
     watch(
-      () => [useIframe.value, userStore.state.access_token, apiBase.value],
+      () => [useIframe.value, userStore.state.access_token, apiBase.value, $q.dark.isActive],
       () => {
         if (useIframe.value) {
           sendAuthToMfe();

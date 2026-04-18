@@ -54,6 +54,7 @@
           label="Выбор сезона"
           outlined
           dense
+          :dark="isDarkMode"
           class="control-select"
           @update:model-value="handleSeasonChange"
         />
@@ -68,6 +69,7 @@
           label="Выбор поля"
           outlined
           dense
+          :dark="isDarkMode"
           class="control-select"
           :disable="!activeSeason"
           @update:model-value="handleFieldChange"
@@ -76,7 +78,15 @@
         <div class="panel-actions">
           <q-btn color="primary" icon="add_circle" label="Сезон" no-caps class="action-btn" @click="goToSeasonPage" />
           <q-btn color="primary" icon="add_box" label="Поле" no-caps class="action-btn" :disable="!activeSeason" @click="openCreateFieldDialog" />
-          <q-btn flat color="grey-8" icon="restart_alt" label="Сброс" no-caps class="action-btn" @click="clearSelections" />
+          <q-btn
+            flat
+            :color="isDarkMode ? 'grey-3' : 'grey-8'"
+            icon="restart_alt"
+            label="Сброс"
+            no-caps
+            class="action-btn"
+            @click="clearSelections"
+          />
         </div>
       </div>
     </div>
@@ -111,11 +121,10 @@
   <map-page-edit-buttons
     v-if="activeField && activeSeason"
     @startDrawing="startDrawing"
-    @removeSelectedPolygon="removeSelectedPolygon"
     @undoLastAction="undoLastAction"
-    @postContours="postContours"
     @isEditMode="toggleEditMode"
     :polygonIsFinished="localPolygonIsFinished"
+    :resetEditModeSignal="resetEditModeSignal"
   />
 </template>
 
@@ -141,10 +150,15 @@ export default {
       type: Boolean,
       required: true,
     },
+    resetEditModeSignal: {
+      type: Number,
+      required: true,
+    },
   },
   setup(props, { emit }) {
     const router = useRouter();
     const $q = useQuasar();
+    const isDarkMode = computed(() => $q.dark.isActive);
     const accessToken = userStore.state.access_token;
     const activeSeason = ref(null);
     const activeField = ref(null);
@@ -180,9 +194,7 @@ export default {
     );
 
     const startDrawing = (isDrawing) => emit("startDrawing", isDrawing);
-    const removeSelectedPolygon = () => emit("removeSelectedPolygon");
     const undoLastAction = () => emit("undoLastAction");
-    const postContours = () => emit("postContours");
     const toggleEditMode = (isEditMode) => emit("isEditMode", isEditMode);
 
     const goToSeasonPage = () => router.push("/add_season");
@@ -354,6 +366,7 @@ export default {
     );
 
     return {
+      isDarkMode,
       activeSeason,
       activeField,
       selectedSeasonId,
@@ -373,9 +386,7 @@ export default {
       closeCreateFieldDialog,
       createFieldAndSelect,
       startDrawing,
-      removeSelectedPolygon,
       undoLastAction,
-      postContours,
       toggleEditMode,
       localPolygonIsFinished,
     };
@@ -545,17 +556,43 @@ export default {
   color: #b8c5d9;
 }
 
-.body--dark .control-select :deep(.q-field__control) {
-  background: rgba(36, 48, 66, 0.95);
+/*
+  Тёмные поля: без :deep() в глобальном блоке селекторы не применялись.
+  Перебиваем scoped background rgba(255,255,255,0.78) и светлый фон outlined.
+*/
+body.body--dark .control-select .q-field__control {
+  background-color: #1e293b !important;
+  background-image: none !important;
 }
 
-.body--dark .control-select :deep(.q-field__native),
-.body--dark .control-select :deep(.q-field__input) {
-  color: #e8edf5;
+body.body--dark .control-select.q-field--outlined .q-field__control:before {
+  border-color: rgba(148, 163, 184, 0.5) !important;
 }
 
-.body--dark .control-select :deep(.q-field__label) {
-  color: #9aa8bc;
+body.body--dark .control-select.q-field--outlined .q-field__control:after {
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+body.body--dark .control-select .q-field__native,
+body.body--dark .control-select .q-field__input,
+body.body--dark .control-select .q-field__prefix,
+body.body--dark .control-select .q-field__suffix,
+body.body--dark .control-select .q-field__append,
+body.body--dark .control-select .q-field__prepend {
+  color: #f8fafc !important;
+}
+
+body.body--dark .control-select .q-field__label {
+  color: #cbd5e1 !important;
+}
+
+body.body--dark .control-select .q-field__marginal,
+body.body--dark .control-select .q-select__dropdown-icon {
+  color: #e2e8f0 !important;
+}
+
+body.body--dark .control-select .q-field__messages {
+  color: #94a3b8 !important;
 }
 
 .body--dark .status-chip-season.q-chip--colored {

@@ -13,49 +13,49 @@
 
     <transition name="actions-fade">
       <div v-if="editModeOn" class="edit-actions-card">
-        <q-btn no-caps color="primary" icon="add" class="action-btn" @click="startDrawing()">
-          <span class="btn-label">Добавить</span>
-        </q-btn>
+        <div class="edit-status-row">
+          <div class="edit-status-item">
+            <strong>Режим:</strong>
+            {{ modeLabel }}
+          </div>
+          <div class="edit-status-item">
+            <strong>Шаг:</strong>
+            {{ stepLabel }}
+          </div>
+        </div>
+
         <q-btn
+          dense
           no-caps
-          :outline="!isPointDeleteMode"
-          :color="isPointDeleteMode ? 'negative' : 'primary'"
-          icon="location_searching"
+          :color="isDrawing ? 'orange-9' : 'primary'"
+          :icon="isDrawing ? 'close' : 'add'"
           class="action-btn"
-          @click="togglePointDeleteMode"
+          :class="{ 'action-btn--active': isDrawing }"
+          @click="startDrawing"
         >
-          <span class="btn-label">{{ isPointDeleteMode ? "Удаление точки: ВКЛ" : "Удалить точку" }}</span>
+          <span class="btn-label">{{ isDrawing ? "Отменить рисование" : "Новый контур" }}</span>
+          <q-tooltip anchor="top middle" self="bottom middle">
+            {{
+              isDrawing
+                ? "Отменит текущее незавершенное рисование. Чтобы сохранить контур, завершите его двойным кликом по карте."
+                : "Начать рисование нового контура."
+            }}
+          </q-tooltip>
         </q-btn>
-        <q-btn no-caps color="positive" icon="done" class="action-btn" @click="postContours()">
-          <span class="btn-label">Сохранить</span>
+        <q-btn dense no-caps flat color="grey-8" icon="undo" class="action-btn" @click="undoLastAction">
+          <span class="btn-label">Отменить</span>
+          <q-tooltip anchor="top middle" self="bottom middle">
+            Отменить последнюю точку в текущем рисовании.
+          </q-tooltip>
         </q-btn>
-        <q-btn no-caps outline color="negative" icon="delete" class="action-btn" @click="confirm = true">
-          <span class="btn-label">Удалить</span>
-        </q-btn>
-        <div class="edit-hint">Клик по контуру = выбор. При режиме "Удалить точку" клик по вершине удаляет ее.</div>
+        <div class="edit-hint">{{ currentHint }}</div>
       </div>
     </transition>
-
-    <!-- для подтверждения удаления
-       сделать чтобы кнопочки да нет работали -->
-    <q-dialog v-model="confirm" persistent>
-      <q-card class="confirm-deleting q-pa-md">
-        <q-card-section class="row items-center">
-          <span align="center"
-            ><strong>Вы действительно хотите удалить этот объект?</strong></span
-          >
-        </q-card-section>
-        <q-card-actions align="center">
-          <q-btn label="Нет" color="primary" v-close-popup />
-          <q-btn label="Да" color="primary" @click="removeSelectedPolygon" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </div>
 </template>
 
 <script>
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 export default {
   name: "MapPageEditButtons",
@@ -64,26 +64,35 @@ export default {
       type: Boolean,
       required: true,
     },
+    resetEditModeSignal: {
+      type: Number,
+      required: true,
+    },
   },
   setup(props, { emit }) {
-    const confirm = ref(false);
     const editModeOn = ref(false);
     const isDrawing = ref(false);
-    const isPointDeleteMode = ref(false);
+    const modeLabel = computed(() => {
+      if (isDrawing.value) return "Рисование контура";
+      return "Выбор и правка контуров";
+    });
+    const stepLabel = computed(() => {
+      if (isDrawing.value) return "Двойной клик замыкает контур";
+      return "Кликните по контуру, чтобы выбрать его";
+    });
+    const currentHint = computed(() => {
+      if (isDrawing.value) {
+        return "Рисование активно: добавляйте точки кликами по карте. Двойной клик завершает и сохраняет контур в черновик.";
+      }
+      return "Чтобы удалить контур, откройте его карточку на карте и нажмите «Удалить контур».";
+    });
+
     const startDrawing = () => {
       isDrawing.value = !isDrawing.value;
       emit("startDrawing", isDrawing.value);
     };
-    const removeSelectedPolygon = () => {
-      confirm.value = false;
-      emit("removeSelectedPolygon");
-    };
-    const postContours = () => {
-      emit("postContours");
-    };
-    const togglePointDeleteMode = () => {
-      isPointDeleteMode.value = !isPointDeleteMode.value;
-      emit("isPointDeleteMode", isPointDeleteMode.value);
+    const undoLastAction = () => {
+      emit("undoLastAction");
     };
     const toggleEditMode = () => {
       editModeOn.value = !editModeOn.value;
@@ -91,22 +100,40 @@ export default {
         isDrawing.value = false;
         emit("startDrawing", false);
       }
-      if (!editModeOn.value && isPointDeleteMode.value) {
-        isPointDeleteMode.value = false;
-        emit("isPointDeleteMode", false);
-      }
       emit("isEditMode", editModeOn.value);
     };
 
+    watch(
+      () => props.polygonIsFinished,
+      (isFinished) => {
+        if (isFinished && isDrawing.value) {
+          isDrawing.value = false;
+          emit("startDrawing", false);
+        }
+      }
+    );
+    watch(
+      () => props.resetEditModeSignal,
+      () => {
+        if (!editModeOn.value && !isDrawing.value) return;
+        if (isDrawing.value) {
+          isDrawing.value = false;
+          emit("startDrawing", false);
+        }
+        editModeOn.value = false;
+        emit("isEditMode", false);
+      }
+    );
+
     return {
       startDrawing,
-      removeSelectedPolygon,
-      confirm,
       editModeOn,
-      postContours,
       toggleEditMode,
-      isPointDeleteMode,
-      togglePointDeleteMode,
+      isDrawing,
+      undoLastAction,
+      modeLabel,
+      stepLabel,
+      currentHint,
     };
   },
 };
@@ -146,7 +173,7 @@ export default {
 
 .edit-actions-card {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding: 8px;
   border-radius: 12px;
@@ -154,6 +181,22 @@ export default {
   box-shadow: 0 8px 20px rgba(19, 36, 58, 0.15);
   backdrop-filter: blur(6px);
   border: 1px solid #dce6f6;
+}
+
+.edit-status-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.edit-status-item {
+  font-size: 12px;
+  color: #24384f;
+  border-radius: 10px;
+  border: 1px solid #cad9ef;
+  background: #f2f7ff;
+  padding: 7px 9px;
 }
 
 .edit-hint {
@@ -167,6 +210,10 @@ export default {
   min-width: 110px;
   border-radius: 10px;
   font-weight: 700;
+}
+
+.action-btn--active {
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.45), 0 8px 18px rgba(249, 115, 22, 0.25);
 }
 
 .btn-label {
@@ -184,29 +231,42 @@ export default {
   transform: translateY(8px);
 }
 
-.confirm-deleting {
-  min-height: 160px;
-  width: 320px;
-  border-radius: 16px;
-}
-
 @media (max-width: 980px) {
   .edit-shell {
-    left: 12px;
-    right: 12px;
+    left: 10px;
+    right: 10px;
+    bottom: 14px;
     transform: none;
   }
 
   .edit-fab-wrap {
     align-self: flex-start;
+    gap: 8px;
+  }
+
+  .edit-fab-label {
+    font-size: 11px;
+    padding: 6px 9px;
   }
 
   .edit-actions-card {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .edit-status-row {
+    grid-template-columns: 1fr;
   }
 
   .action-btn {
     min-width: 0;
+    min-height: 38px;
+    font-size: 12px;
+  }
+
+  .edit-hint {
+    font-size: 11px;
   }
 }
 </style>

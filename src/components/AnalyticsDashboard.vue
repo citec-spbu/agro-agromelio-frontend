@@ -1,5 +1,5 @@
 <template>
-  <div class="analytics-root q-pa-md">
+  <div class="analytics-root q-pa-md" :class="{ 'analytics-root--dark': isDarkMode }">
     <div v-if="!hasToken" class="analytics-banner">
       Войдите в приложение, чтобы загрузить аналитику.
     </div>
@@ -25,6 +25,7 @@
             map-options
             outlined
             dense
+            :dark="isDarkMode"
             clearable
             clear-icon="close"
             label="Сезон"
@@ -138,6 +139,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
+import { useQuasar } from 'quasar';
 import { userStore } from 'src/usage';
 import {
   Chart,
@@ -208,6 +210,18 @@ function resolveApiBase() {
 
 const apiBase = computed(() => resolveApiBase());
 const hasToken = computed(() => Boolean(userStore.state.access_token));
+const $q = useQuasar();
+const isDarkMode = computed(() => $q.dark.isActive);
+
+function chartTheme() {
+  const dark =
+    typeof document !== 'undefined' && document.body.classList.contains('body--dark');
+  return {
+    tickColor: dark ? '#c5d0e0' : '#5c6b7a',
+    gridColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+    legendColor: dark ? '#d0dae8' : '#37474f',
+  };
+}
 
 const summary = ref(null);
 const error = ref('');
@@ -392,7 +406,14 @@ function renderDoughnutArea(items) {
       maintainAspectRatio: false,
       cutout: '58%',
       plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 12,
+            font: { size: 11 },
+            color: chartTheme().legendColor,
+          },
+        },
         tooltip: {
           callbacks: {
             label(ctx) {
@@ -468,13 +489,13 @@ function renderBarStarts(series) {
       scales: {
         x: {
           min: 0,
-          ticks: { precision: 0 },
-          title: { display: true, text: 'Посевов, шт.' },
-          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: { precision: 0, color: chartTheme().tickColor },
+          title: { display: true, text: 'Посевов, шт.', color: chartTheme().tickColor },
+          grid: { color: chartTheme().gridColor },
         },
         y: {
           reverse: true,
-          ticks: { font: { size: 10 } },
+          ticks: { font: { size: 10 }, color: chartTheme().tickColor },
           grid: { display: false },
         },
       },
@@ -550,7 +571,14 @@ function renderSeasonGantt(records) {
       maintainAspectRatio: false,
       interaction: { mode: 'nearest', intersect: true },
       plugins: {
-        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+        legend: {
+          position: 'top',
+          labels: {
+            boxWidth: 12,
+            font: { size: 11 },
+            color: chartTheme().legendColor,
+          },
+        },
         tooltip: {
           callbacks: {
             title(items) {
@@ -586,6 +614,7 @@ function renderSeasonGantt(records) {
           min: SEASON_GANTT_X_MIN_MS,
           ticks: {
             maxTicksLimit: 10,
+            color: chartTheme().tickColor,
             callback(v) {
               return new Date(v).toLocaleDateString('ru-RU', {
                 day: 'numeric',
@@ -594,14 +623,14 @@ function renderSeasonGantt(records) {
               });
             },
           },
-          grid: { color: 'rgba(0,0,0,0.06)' },
-          title: { display: true, text: 'Календарь' },
+          grid: { color: chartTheme().gridColor },
+          title: { display: true, text: 'Календарь', color: chartTheme().tickColor },
         },
         y: {
           type: 'category',
           offset: true,
           grid: { display: false },
-          ticks: { font: { size: 10 } },
+          ticks: { font: { size: 10 }, color: chartTheme().tickColor },
         },
       },
     },
@@ -666,6 +695,16 @@ watch(
   () => bootstrapAnalytics(),
 );
 
+watch(
+  () => $q.dark.isActive,
+  async () => {
+    await nextTick();
+    renderDoughnutArea(byCultureItems.value);
+    renderBarStarts(timelineSeries.value);
+    renderSeasonGantt(cropRecords.value);
+  },
+);
+
 onBeforeUnmount(() => {
   chartDoughnutArea?.destroy();
   chartBarStarts?.destroy();
@@ -675,41 +714,50 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .analytics-root {
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #1b2430;
+  --analytics-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--analytics-font);
+  color: #020617;
   max-width: 1100px;
   margin: 0 auto;
+  -webkit-font-smoothing: antialiased;
 }
 
 .analytics-filters .filter-label {
-  font-size: 0.75rem;
-  color: #6a7b90;
-  margin-bottom: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
 }
 
 .filter-hint {
   margin: 8px 0 0;
-  font-size: 0.72rem;
-  color: #78909c;
-  line-height: 1.35;
+  font-size: 0.8125rem;
+  color: #1e293b;
+  line-height: 1.5;
   max-width: 42rem;
 }
 
 .analytics-head {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .analytics-title {
-  font-size: 1.5rem;
-  margin: 0 0 0.25rem;
-  font-weight: 650;
+  font-size: 1.75rem;
+  margin: 0 0 0.375rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: #020617;
 }
 
 .analytics-sub {
   margin: 0;
-  color: #5c6b80;
-  font-size: 0.9rem;
-  line-height: 1.45;
+  max-width: 52rem;
+  color: #0f172a;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.55;
 }
 
 .analytics-banner,
@@ -843,5 +891,108 @@ onBeforeUnmount(() => {
   .chart-doughnut .chart-canvas-wrap {
     max-width: none;
   }
+}
+
+.analytics-root--dark {
+  color: #f8fafc;
+  padding-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.analytics-root--dark .analytics-title {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.analytics-root--dark .analytics-sub,
+.analytics-root--dark .filter-hint {
+  color: #e2e8f0;
+}
+
+.analytics-root--dark .analytics-filters .filter-label {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.analytics-root--dark .analytics-banner {
+  background: rgba(51, 65, 85, 0.85);
+  color: #f1f5f9;
+}
+
+.analytics-root--dark .analytics-error {
+  background: rgba(183, 28, 28, 0.35);
+  color: #fecaca;
+}
+
+.analytics-root--dark .kpi-card {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.analytics-root--dark .kpi-card--land {
+  background: linear-gradient(145deg, #334155, #1e293b);
+}
+
+.analytics-root--dark .kpi-card--crop {
+  background: linear-gradient(145deg, #2f4f3f, #1e3330);
+}
+
+.analytics-root--dark .kpi-label {
+  color: #cbd5e1;
+}
+
+.analytics-root--dark .kpi-value {
+  color: #ffffff;
+}
+
+.analytics-root--dark .chart-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.analytics-root--dark .chart-title {
+  color: #ffffff;
+}
+
+.analytics-root--dark .chart-hint {
+  color: #cbd5e1;
+}
+
+.analytics-root--dark .chart-hint--warn {
+  color: #fca5a5;
+}
+
+.analytics-root--dark .chart-note {
+  color: #94a3b8;
+}
+
+.analytics-root--dark .crop-table :deep(th),
+.analytics-root--dark .crop-table :deep(td) {
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
+.analytics-root--dark .crop-table :deep(thead tr th) {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.analytics-root--dark.analytics-root .analytics-filters :deep(.q-field__control) {
+  background-color: #1e293b !important;
+  background-image: none !important;
+}
+
+.analytics-root--dark.analytics-root .analytics-filters :deep(.q-field__native),
+.analytics-root--dark.analytics-root .analytics-filters :deep(.q-field__input) {
+  color: #f8fafc !important;
+}
+
+.analytics-root--dark.analytics-root .analytics-filters :deep(.q-field__label) {
+  color: #f1f5f9 !important;
+}
+
+.analytics-root--dark.analytics-root .analytics-filters :deep(.q-field__marginal),
+.analytics-root--dark.analytics-root .analytics-filters :deep(.q-select__dropdown-icon) {
+  color: #e2e8f0 !important;
 }
 </style>

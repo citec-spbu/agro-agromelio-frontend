@@ -45,14 +45,14 @@
       <q-card-section class="chart-header-row">
         <div class="text-subtitle1 text-weight-bold">Контекст по культуре</div>
         <div class="text-caption text-grey-7">
-          Данные берутся из севооборота по контурам поля
+          Данные по культуре берутся из севооборота, DZZ доступен для всех контуров поля
         </div>
       </q-card-section>
-      <q-card-section v-if="cultureContext && cultureContext.contours && cultureContext.contours.length">
+      <q-card-section v-if="contourCards.length">
         <div class="culture-overview-row">
           <div class="culture-overview-card">
             <span>Контуров с культурой</span>
-            <strong>{{ cultureContext.contours_with_culture }} из {{ cultureContext.total_contours }}</strong>
+            <strong>{{ contoursWithCultureCount }} из {{ totalContoursCount }}</strong>
           </div>
           <div class="text-caption text-grey-7 culture-overview-text">
             Выберите карточку контура, чтобы построить карту, сцены и сравнение именно по нему.
@@ -60,36 +60,46 @@
         </div>
         <div class="culture-grid q-mt-md">
           <div
-            v-for="contour in cultureContext.contours"
-            :key="contour.contour_id"
+            v-for="contour in contourCards"
+            :key="contour.contourId"
             class="culture-item culture-card"
-            :class="{ active: contour.contour_id === selectedContourId }"
+            :class="{ active: contour.contourId === selectedContourId }"
           >
             <div class="culture-card-head">
-              <div class="culture-card-title">{{ contour.contour_name || contour.contour_id }}</div>
+              <div class="culture-card-title">{{ contour.contourName }}</div>
               <q-btn
                 dense
                 flat
                 no-caps
                 color="primary"
                 label="Показать DZZ"
-                @click="setSelectedContour(contour.contour_id)"
+                @click="setSelectedContour(contour.contourId)"
               />
             </div>
-            <div class="culture-badge-row">
-              <div class="culture-badge">{{ contour.culture }}</div>
-              <div class="culture-badge culture-badge-secondary">{{ contour.cultivar }}</div>
+            <div v-if="contour.hasCulture" class="culture-badge-row">
+              <div class="culture-badge">{{ contour.culture || "Культура не указана" }}</div>
+              <div v-if="contour.cultivar" class="culture-badge culture-badge-secondary">{{ contour.cultivar }}</div>
+            </div>
+            <div v-else class="culture-badge-row">
+              <div class="culture-badge culture-badge-empty">Культура не задана</div>
             </div>
             <div class="culture-card-meta">
-              <div><strong>Период:</strong> {{ formatDate(contour.start_date) }} - {{ formatDate(contour.end_date) }}</div>
-              <div v-if="contour.description"><strong>Описание:</strong> {{ contour.description }}</div>
+              <div v-if="contour.hasCulture">
+                <strong>Период:</strong> {{ formatDate(contour.startDate) }} - {{ formatDate(contour.endDate) }}
+              </div>
+              <div v-if="contour.hasCulture && contour.description">
+                <strong>Описание:</strong> {{ contour.description }}
+              </div>
+              <div v-if="!contour.hasCulture">
+                Для этого контура можно смотреть DZZ без привязки к культуре.
+              </div>
             </div>
           </div>
         </div>
       </q-card-section>
       <q-card-section v-else>
         <div class="text-grey-7">
-          Для контуров поля пока не найден актуальный контекст по культуре.
+          Для поля пока не найдены контуры.
         </div>
       </q-card-section>
     </q-card>
@@ -154,23 +164,40 @@
             v-model="sceneIdA"
             dense
             outlined
+            stack-label
             emit-value
             map-options
             label="Дата A"
+            class="scene-select"
+            :display-value="sceneADisplayValue"
             :options="sceneOptions"
             @update:model-value="handleSceneAChange"
-          />
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey-7">Нет сцен в выбранном периоде</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
           <q-select
             v-model="sceneIdB"
             dense
             outlined
+            stack-label
             emit-value
             map-options
             label="Дата B"
+            class="scene-select"
+            :display-value="sceneBDisplayValue"
             :options="compareSceneOptions"
-            :disable="!compareSceneOptions.length"
             @update:model-value="handleSceneBChange"
-          />
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey-7">Нет доступной второй сцены в выбранном периоде</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
           <div class="compare-toggle">
             <q-toggle
               v-model="compareEnabled"
@@ -337,8 +364,10 @@
 
     <q-card class="q-mt-md chart-card">
       <q-card-section class="chart-header-row">
-        <div class="text-subtitle1 text-weight-bold">Каталог сцен по контуру</div>
-        <div class="text-caption text-grey-7">Всего сцен за период: {{ catalog.length }}</div>
+        <div class="text-subtitle1 text-weight-bold">Источники снимков (каталог)</div>
+        <div class="text-caption text-grey-7">
+          Используйте каталог для выбора сцен A/B и проверки качества снимков по дате.
+        </div>
       </q-card-section>
       <q-card-section>
         <div v-if="dashboardLoading" class="chart-empty-state catalog-loading-state">
@@ -346,25 +375,88 @@
           <div class="chart-empty-title q-mt-md">Загружаем каталог сцен</div>
           <div class="chart-empty-text">Подбираем сцены для нового периода и выбранного контура.</div>
         </div>
-        <div v-else-if="catalog.length" class="catalog-grid">
-          <div
-            v-for="scene in sortedCatalog"
-            :key="scene.scene_id"
-            class="catalog-item"
-            :class="{
-              selectedA: scene.scene_id === sceneIdA,
-              selectedB: scene.scene_id === sceneIdB,
-            }"
-          >
-            <div><strong>Дата:</strong> {{ formatDate(scene.scene_date) }}</div>
-            <div><strong>Сенсор:</strong> {{ scene.sensor }}</div>
-            <div><strong>Коллекция:</strong> {{ scene.collection }}</div>
-            <div><strong>Облачность:</strong> {{ formatPercent(scene.cloud_cover) }}</div>
-            <div class="scene-id"><strong>Scene ID:</strong> {{ scene.scene_id }}</div>
-            <div class="catalog-actions">
-              <q-btn dense flat no-caps color="primary" label="Выбрать как A" @click="selectSceneA(scene.scene_id)" />
-              <q-btn dense flat no-caps color="secondary" label="Выбрать как B" @click="selectSceneB(scene.scene_id)" />
+        <div v-else-if="catalog.length">
+          <div class="catalog-toolbar q-mb-md">
+            <q-input
+              v-model="catalogDateFrom"
+              dense
+              outlined
+              type="date"
+              label="Дата от"
+              class="catalog-filter-input"
+            />
+            <q-input
+              v-model="catalogDateTo"
+              dense
+              outlined
+              type="date"
+              label="Дата до"
+              class="catalog-filter-input"
+            />
+            <q-btn
+              dense
+              flat
+              no-caps
+              color="primary"
+              label="Сбросить фильтр"
+              :disable="!catalogDateFrom && !catalogDateTo"
+              @click="clearCatalogDateFilter"
+            />
+            <div class="text-caption text-grey-7 catalog-toolbar-summary">
+              Показано {{ catalogShownCount }} из {{ catalogTotalCount }}
             </div>
+          </div>
+          <q-banner v-if="isCatalogDateRangeInvalid" class="q-mb-md bg-orange-1 text-warning">
+            Дата «от» не должна быть больше даты «до».
+          </q-banner>
+          <div v-if="visibleCatalog.length" class="catalog-grid">
+            <div
+              v-for="scene in visibleCatalog"
+              :key="scene.scene_id"
+              class="catalog-item"
+              :class="{
+                selectedA: scene.scene_id === sceneIdA,
+                selectedB: scene.scene_id === sceneIdB,
+              }"
+            >
+              <div><strong>Дата:</strong> {{ formatDate(scene.scene_date) }}</div>
+              <div><strong>Сенсор:</strong> {{ scene.sensor }}</div>
+              <div><strong>Коллекция:</strong> {{ scene.collection }}</div>
+              <div><strong>Облачность:</strong> {{ formatPercent(scene.cloud_cover) }}</div>
+              <div class="scene-id"><strong>Scene ID:</strong> {{ scene.scene_id }}</div>
+              <div class="catalog-actions">
+                <q-chip
+                  clickable
+                  class="scene-pick-chip scene-pick-chip-a"
+                  :class="{ active: scene.scene_id === sceneIdA }"
+                  @click="selectSceneA(scene.scene_id)"
+                >
+                  <q-avatar>A</q-avatar>
+                  {{ scene.scene_id === sceneIdA ? "Выбрано как A" : "Выбрать как A" }}
+                </q-chip>
+                <q-chip
+                  clickable
+                  class="scene-pick-chip scene-pick-chip-b"
+                  :class="{ active: scene.scene_id === sceneIdB }"
+                  @click="selectSceneB(scene.scene_id)"
+                >
+                  <q-avatar>B</q-avatar>
+                  {{ scene.scene_id === sceneIdB ? "Выбрано как B" : "Выбрать как B" }}
+                </q-chip>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-grey-7">
+            По выбранному диапазону дат сцены не найдены.
+          </div>
+          <div v-if="hasMoreCatalog" class="catalog-more q-mt-md">
+            <q-btn
+              no-caps
+              outline
+              color="primary"
+              label="Показать ещё"
+              @click="showMoreCatalog"
+            />
           </div>
         </div>
         <div v-else class="text-grey-7">Сцены не найдены.</div>
@@ -388,6 +480,7 @@ import "leaflet/dist/leaflet.css";
 import { userStore } from "src/usage";
 
 const DEFAULT_PERIOD_DAYS = 45;
+const CATALOG_PAGE_SIZE = 20;
 const indexOptions = [
   { label: "NDVI", value: "ndvi" },
   { label: "EVI", value: "evi" },
@@ -465,6 +558,9 @@ export default {
     const sceneIdB = ref("");
     const compareEnabled = ref(false);
     const compareLayerMode = ref("diff");
+    const catalogDateFrom = ref("");
+    const catalogDateTo = ref("");
+    const visibleCatalogLimit = ref(CATALOG_PAGE_SIZE);
 
     const formatDate = (raw) => {
       if (!raw) return "-";
@@ -619,10 +715,22 @@ export default {
     const compareToggleFg = computed(() => ($q.dark.isActive ? "grey-2" : "primary"));
 
     const sortedCatalog = computed(() => [...catalog.value].reverse());
+    const periodFilteredCatalog = computed(() =>
+      sortedCatalog.value.filter((scene) => {
+        const sceneDate = toIsoDate(scene.scene_date);
+        if (dateFrom.value && sceneDate < dateFrom.value) {
+          return false;
+        }
+        if (dateTo.value && sceneDate > dateTo.value) {
+          return false;
+        }
+        return true;
+      })
+    );
 
     const sceneOptions = computed(() =>
-      sortedCatalog.value.map((scene) => ({
-        label: `${formatDate(scene.scene_date)} | ${scene.sensor} | ${formatPercent(scene.cloud_cover)}`,
+      periodFilteredCatalog.value.map((scene) => ({
+        label: `${formatDate(scene.scene_date)} · ${scene.sensor}`,
         value: scene.scene_id,
       }))
     );
@@ -651,17 +759,96 @@ export default {
     });
 
     const compareSceneOptions = computed(() => {
-      const primaryScene = catalog.value.find((scene) => scene.scene_id === sceneIdA.value);
-      const pool = primaryScene
-        ? sortedCatalog.value.filter(
-            (scene) => scene.scene_id !== sceneIdA.value && scene.sensor === primaryScene.sensor
-          )
-        : sortedCatalog.value.filter((scene) => scene.scene_id !== sceneIdA.value);
+      const pool = periodFilteredCatalog.value.filter((scene) => scene.scene_id !== sceneIdA.value);
       return pool.map((scene) => ({
-        label: `${formatDate(scene.scene_date)} | ${scene.sensor} | ${formatPercent(scene.cloud_cover)}`,
+        label: `${formatDate(scene.scene_date)} · ${scene.sensor}`,
         value: scene.scene_id,
       }));
     });
+
+    const isCatalogDateRangeInvalid = computed(
+      () =>
+        Boolean(
+          catalogDateFrom.value &&
+            catalogDateTo.value &&
+            catalogDateFrom.value > catalogDateTo.value
+        )
+    );
+
+    const filteredCatalog = computed(() => {
+      if (isCatalogDateRangeInvalid.value) {
+        return [];
+      }
+      return sortedCatalog.value.filter((scene) => {
+        const sceneDate = toIsoDate(scene.scene_date);
+        if (catalogDateFrom.value && sceneDate < catalogDateFrom.value) {
+          return false;
+        }
+        if (catalogDateTo.value && sceneDate > catalogDateTo.value) {
+          return false;
+        }
+        return true;
+      });
+    });
+
+    const visibleCatalog = computed(() =>
+      filteredCatalog.value.slice(0, visibleCatalogLimit.value)
+    );
+    const hasMoreCatalog = computed(
+      () => filteredCatalog.value.length > visibleCatalogLimit.value
+    );
+    const catalogShownCount = computed(() => visibleCatalog.value.length);
+    const catalogTotalCount = computed(() => filteredCatalog.value.length);
+    const selectedSceneAData = computed(
+      () => periodFilteredCatalog.value.find((scene) => scene.scene_id === sceneIdA.value) || null
+    );
+    const selectedSceneBData = computed(
+      () => periodFilteredCatalog.value.find((scene) => scene.scene_id === sceneIdB.value) || null
+    );
+    const sceneADisplayValue = computed(() =>
+      selectedSceneAData.value
+        ? `${formatDate(selectedSceneAData.value.scene_date)} · ${selectedSceneAData.value.sensor}`
+        : ""
+    );
+    const sceneBDisplayValue = computed(() =>
+      selectedSceneBData.value
+        ? `${formatDate(selectedSceneBData.value.scene_date)} · ${selectedSceneBData.value.sensor}`
+        : ""
+    );
+
+    const contourCultureMap = computed(() => {
+      const entries = Array.isArray(cultureContext.value?.contours) ? cultureContext.value.contours : [];
+      return new Map(
+        entries
+          .filter((item) => item && item.contour_id)
+          .map((item) => [item.contour_id, item])
+      );
+    });
+
+    const contourCards = computed(() =>
+      contours.value
+        .filter((contour) => contour.id)
+        .map((contour) => {
+          const cultureData = contourCultureMap.value.get(contour.id);
+          const hasCulture = Boolean(cultureData?.culture || cultureData?.cultivar);
+          return {
+            contourId: contour.id,
+            contourName: contour.name || contour.id,
+            culture: cultureData?.culture || null,
+            cultivar: cultureData?.cultivar || null,
+            startDate: cultureData?.start_date || null,
+            endDate: cultureData?.end_date || null,
+            description: cultureData?.description || null,
+            hasCulture,
+          };
+        })
+    );
+
+    const contoursWithCultureCount = computed(
+      () => contourCards.value.filter((item) => item.hasCulture).length
+    );
+
+    const totalContoursCount = computed(() => contourCards.value.length);
 
     const currentOverlay = computed(() => {
       if (compareEnabled.value && compareData.value) {
@@ -693,11 +880,21 @@ export default {
     });
 
     const compareHint = computed(() => {
+      if (!periodFilteredCatalog.value.length) {
+        return "В выбранном периоде нет сцен.";
+      }
       if (!sceneIdA.value) return "Сначала выберите основную сцену.";
       if (!compareSceneOptions.value.length) {
-        return "Для выбранной сцены нет пары с тем же сенсором.";
+        return "В выбранном периоде нет второй сцены для сравнения.";
       }
       if (!sceneIdB.value) return "Выберите вторую дату для сравнения.";
+      if (
+        selectedSceneAData.value &&
+        selectedSceneBData.value &&
+        selectedSceneAData.value.sensor !== selectedSceneBData.value.sensor
+      ) {
+        return "Для сравнения выберите сцены одного сенсора.";
+      }
       return "Слой разницы показывает B минус A.";
     });
 
@@ -852,22 +1049,28 @@ export default {
         .find(
           (scene) => scene.scene_id !== primaryId && scene.sensor === primaryScene.sensor
         );
-      return sameSensorAlternative ? sameSensorAlternative.scene_id : "";
+      if (sameSensorAlternative) {
+        return sameSensorAlternative.scene_id;
+      }
+      const firstAlternative = [...sourceScenes].reverse().find((scene) => scene.scene_id !== primaryId);
+      return firstAlternative ? firstAlternative.scene_id : "";
     };
 
     const applyDashboardData = (dashboard) => {
       summary.value = dashboard.summary || null;
       cultureContext.value = dashboard.culture_context || null;
       catalog.value = dashboard.catalog || [];
+      visibleCatalogLimit.value = CATALOG_PAGE_SIZE;
       timeseries.value = dashboard.timeseries || [];
-      if (!catalog.value.some((scene) => scene.scene_id === sceneIdA.value)) {
-        sceneIdA.value = sortedCatalog.value[0] ? sortedCatalog.value[0].scene_id : "";
+      const periodScenes = periodFilteredCatalog.value;
+      if (!periodScenes.some((scene) => scene.scene_id === sceneIdA.value)) {
+        sceneIdA.value = periodScenes[0] ? periodScenes[0].scene_id : "";
       }
       if (
-        !catalog.value.some((scene) => scene.scene_id === sceneIdB.value) ||
+        !periodScenes.some((scene) => scene.scene_id === sceneIdB.value) ||
         sceneIdB.value === sceneIdA.value
       ) {
-        sceneIdB.value = findFallbackSceneB(sceneIdA.value, catalog.value);
+        sceneIdB.value = findFallbackSceneB(sceneIdA.value, periodScenes);
       }
       dzzError.value = null;
       setTimeout(buildChart, 0);
@@ -1060,6 +1263,18 @@ export default {
         await applyCurrentOverlay();
         return;
       }
+      if (
+        selectedSceneAData.value &&
+        selectedSceneBData.value &&
+        selectedSceneAData.value.sensor !== selectedSceneBData.value.sensor
+      ) {
+        compareData.value = null;
+        compareError.value = {
+          message: "Сравнение доступно только для сцен одного сенсора.",
+        };
+        await applyCurrentOverlay();
+        return;
+      }
 
       compareLoading.value = true;
       try {
@@ -1157,7 +1372,7 @@ export default {
         return;
       }
       if (!sceneIdB.value || sceneIdB.value === sceneIdA.value) {
-        sceneIdB.value = findFallbackSceneB(sceneIdA.value, catalog.value);
+        sceneIdB.value = findFallbackSceneB(sceneIdA.value, periodFilteredCatalog.value);
       }
       if (compareEnabled.value && !sceneIdB.value) {
         compareEnabled.value = false;
@@ -1169,7 +1384,7 @@ export default {
 
     const handleSceneBChange = async () => {
       if (compareEnabled.value && sceneIdB.value === sceneIdA.value) {
-        sceneIdB.value = findFallbackSceneB(sceneIdA.value, catalog.value);
+        sceneIdB.value = findFallbackSceneB(sceneIdA.value, periodFilteredCatalog.value);
       }
       await loadCompareData();
       await applyCurrentOverlay();
@@ -1177,7 +1392,7 @@ export default {
 
     const handleCompareToggle = async (enabled) => {
       if (enabled && !sceneIdB.value) {
-        sceneIdB.value = findFallbackSceneB(sceneIdA.value, catalog.value);
+        sceneIdB.value = findFallbackSceneB(sceneIdA.value, periodFilteredCatalog.value);
       }
       if (enabled && !sceneIdB.value) {
         compareEnabled.value = false;
@@ -1206,6 +1421,16 @@ export default {
       }
       selectedContourId.value = contourId;
       await handleContourChange();
+    };
+
+    const showMoreCatalog = () => {
+      visibleCatalogLimit.value += CATALOG_PAGE_SIZE;
+    };
+
+    const clearCatalogDateFilter = () => {
+      catalogDateFrom.value = "";
+      catalogDateTo.value = "";
+      visibleCatalogLimit.value = CATALOG_PAGE_SIZE;
     };
 
     const destroyMap = () => {
@@ -1247,12 +1472,17 @@ export default {
       }
     );
 
+    watch([catalogDateFrom, catalogDateTo], () => {
+      visibleCatalogLimit.value = CATALOG_PAGE_SIZE;
+    });
+
     return {
       fieldInfo,
       summary,
       cultureContext,
       catalog,
       sortedCatalog,
+      periodFilteredCatalog,
       timeseries,
       dzzError,
       mapError,
@@ -1266,6 +1496,10 @@ export default {
       selectedIndex,
       sceneIdA,
       sceneIdB,
+      sceneADisplayValue,
+      sceneBDisplayValue,
+      catalogDateFrom,
+      catalogDateTo,
       compareEnabled,
       compareLayerMode,
       compareLayerOptions,
@@ -1278,11 +1512,19 @@ export default {
       contourOptions,
       selectedContourId,
       selectedContourLabel,
+      contourCards,
+      contoursWithCultureCount,
+      totalContoursCount,
       activeLayerLabel,
       legendTitle,
       legendInterpretation,
       compareHint,
       compareData,
+      visibleCatalog,
+      hasMoreCatalog,
+      catalogShownCount,
+      catalogTotalCount,
+      isCatalogDateRangeInvalid,
       refreshDzzData,
       handlePeriodChange,
       handleIndexChange,
@@ -1293,6 +1535,8 @@ export default {
       selectSceneA,
       selectSceneB,
       setSelectedContour,
+      showMoreCatalog,
+      clearCatalogDateFilter,
       applyCurrentOverlay,
       formatDate,
       formatDateTime,
@@ -1491,6 +1735,76 @@ export default {
   flex-wrap: wrap;
 }
 
+.catalog-actions {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.scene-pick-chip {
+  cursor: pointer;
+  margin: 0;
+  padding: 2px 10px;
+  min-height: 34px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.scene-pick-chip :deep(.q-avatar) {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scene-pick-chip:hover {
+  transform: translateY(-1px);
+}
+
+.scene-pick-chip-a {
+  background: #e7f0ff;
+  color: #2455b9;
+  border-color: rgba(36, 85, 185, 0.22);
+}
+
+.scene-pick-chip-a :deep(.q-avatar) {
+  background: #2f6fdd;
+  color: #ffffff;
+}
+
+.scene-pick-chip-a.active {
+  background: #2f6fdd;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(47, 111, 221, 0.26);
+}
+
+.scene-pick-chip-a.active :deep(.q-avatar) {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.scene-pick-chip-b {
+  background: #eaf8ff;
+  color: #0f6a8b;
+  border-color: rgba(15, 106, 139, 0.22);
+}
+
+.scene-pick-chip-b :deep(.q-avatar) {
+  background: #0f8bb8;
+  color: #ffffff;
+}
+
+.scene-pick-chip-b.active {
+  background: #0f8bb8;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(15, 139, 184, 0.28);
+}
+
+.scene-pick-chip-b.active :deep(.q-avatar) {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
 .legend-bar {
   height: 14px;
   border-radius: 999px;
@@ -1576,6 +1890,11 @@ export default {
   color: var(--dzz-culture-badge-2-fg);
 }
 
+.culture-badge-empty {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--dzz-text-muted);
+}
+
 .culture-card-meta {
   display: flex;
   flex-direction: column;
@@ -1629,6 +1948,34 @@ export default {
   color: var(--dzz-culture-meta);
 }
 
+.catalog-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.catalog-filter-input {
+  min-width: 180px;
+}
+
+.catalog-toolbar-summary {
+  margin-left: auto;
+}
+
+.catalog-more {
+  display: flex;
+  justify-content: center;
+}
+
+.scene-select :deep(.q-field__native),
+.scene-select :deep(.q-field__input) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .catalog-item strong {
   color: var(--dzz-text-strong);
 }
@@ -1663,6 +2010,11 @@ export default {
   .culture-grid,
   .controls-grid {
     grid-template-columns: 1fr;
+  }
+
+  .catalog-toolbar-summary {
+    width: 100%;
+    margin-left: 0;
   }
 
   #dzz-field-map,
