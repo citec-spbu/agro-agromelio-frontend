@@ -1,40 +1,30 @@
-# DigitalTwin Frontend
+# agro-agromelio-frontend
 
-## Главная страница
+Клиентское приложение (Quasar + Vue) для работы с полями, сезонами, ДЗЗ и аналитикой.
 
-![home_page](https://github.com/AgroScience-Team/frontend/blob/new_master/docs/home_page.jpg)
+## Стек
+- Quasar (Vue 3)
+- Docker / Docker Compose
+- Nginx (для контейнерного окружения)
 
-## Карта
-
-![map_page](https://github.com/AgroScience-Team/frontend/blob/new_master/docs/map_page.jpg)
-
-## Настройки профиля
-
-![settings_page](https://github.com/AgroScience-Team/frontend/blob/new_master/docs/settings_page.jpg)
-
-## Как развернуть приложение для разработки?
-
-1. Установить [docker](https://docs.docker.com/install/overview/) и [docker-compose](https://docs.docker.com/compose/install/)
-   
-2. На ubuntu лучше настроить [использование докера без sudo](https://askubuntu.com/questions/477551/how-can-i-use-docker-without-sudo)
-
-3. Загрузить проект из репозитория
-
-```sh
-git clone git@github.com:AgroScience-Team/agromelio-frontend.git
-``` 
-4. Для сборки сервисов, описанных в конфигурационных файлах:
-```sh
-docker-compose build
+## Быстрый запуск
+```bash
+docker network create agronetwork 2>/dev/null || true
+docker compose up -d --build
 ```
-5. Запуск собранных сервисов из конфигурационного файла:
-```sh
-docker-compose up -d
+
+Приложение будет доступно по адресу `http://localhost:9000/#/`.
+
+## Переменные окружения
+Основные параметры задаются в `.env`.
+
+Ключевые переменные:
+- `VUE_APP_GATEWAY_URL` - URL API gateway;
+- `VUE_APP_ANALYTICS_MFE_URL` - URL аналитического микрофронта.
+
+## Полезные команды
+```bash
+npm run dev
+npm run test:ci
+npm run build
 ```
-6. Перейти на сайт
-http://localhost:9000/#/   
- 
-7. Чтобы завершить работу приложения в командной строке: 
-```sh
-docker-compose down  
-``` 

@@ -229,13 +229,13 @@ const cropRecords = ref([]);
 const byCultureItems = ref([]);
 const timelineSeries = ref([]);
 const seasonItems = ref([]);
-/** Пустая строка — все сезоны */
+/** Empty string means "all seasons". */
 const selectedSeasonId = ref('');
 
 const doughnutAreaRef = ref(null);
 const barStartsRef = ref(null);
 const seasonGanttRef = ref(null);
-/** Подпись при свёртке «Прочие» */
+/** Caption shown when tail values are merged into "Other". */
 const sowingsChartNote = ref('');
 
 let chartDoughnutArea;
@@ -243,10 +243,10 @@ let chartBarStarts;
 let chartSeasonGantt;
 
 const RECORDS_LIMIT = 2000;
-/** Сколько культур показывать на графике посевов; остальные — в «Прочие». */
+/** Number of cultures shown on sowings chart; tail values are grouped into "Other". */
 const MAX_SOWINGS_ON_CHART = 20;
 const maxSowingsOnChart = MAX_SOWINGS_ON_CHART;
-/** Минимум оси времени на графике севооборота (не раньше 2000 г., без «1 янв. 70»). */
+/** Minimum timeline bound to avoid invalid old dates on crop-rotation chart. */
 const SEASON_GANTT_X_MIN_MS = Date.UTC(2000, 0, 1);
 
 const seasonFilterOptions = computed(() => [
@@ -326,7 +326,7 @@ function truncateCultureAxisLabel(s, maxLen = 34) {
   return `${t.slice(0, maxLen - 1)}…`;
 }
 
-/** Топ-N по посевам; хвост суммируется в «Прочие (K культ.)». */
+/** Keep top-N sowings and aggregate the rest into "Other (K cultures)". */
 function buildSowingsBarDisplay(pairs) {
   const max = MAX_SOWINGS_ON_CHART;
   if (pairs.length <= max) {

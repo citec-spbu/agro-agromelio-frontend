@@ -1,4 +1,4 @@
-/** Сохранение темы в localStorage (до async-инициализации userStore). */
+/** Persist theme in localStorage before async userStore initialization. */
 export const APP_THEME_STORAGE_KEY = 'agromelio-ui-theme';
 
 /** @returns {'light' | 'dark'} */
@@ -16,7 +16,7 @@ export function setAppTheme(mode, $q) {
   }
 }
 
-/** Для boot: только Dark из quasar. */
+/** For boot phase: map only to Quasar dark flag. */
 export function readThemeIsDark() {
   return getStoredTheme() === 'dark';
 }

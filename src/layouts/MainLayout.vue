@@ -401,7 +401,7 @@ export default {
 </style>
 
 <style>
-/* Шапка и кнопки меню под тёмную тему (класс body задаёт Quasar Dark) */
+/* Header and menu button styling for dark theme (body class is set by Quasar Dark). */
 body.body--dark .header-surface {
   background: rgba(28, 38, 54, 0.92);
   border-bottom-color: #2a3548;

@@ -45,7 +45,7 @@ module.exports = configure(function (/* ctx */) {
         viteConf.build = mergeConfig(viteConf.build, {
           chunkSizeWarningLimit: 750,
         });
-        // Дублируем proxy на server после merge Quasar → Vite (на случай порядка конфигурации)
+        // Re-apply proxy on server after Quasar -> Vite merge to avoid config-order issues.
         if (viteConf.server) {
           viteConf.server.proxy = {
             ...(viteConf.server.proxy || {}),
@@ -65,9 +65,9 @@ module.exports = configure(function (/* ctx */) {
 
     devServer: {
       open: false,
-      // В Docker без 0.0.0.0 порт не доступен с хоста при quasar dev
+      // In Docker, 0.0.0.0 is required to expose quasar dev port to host.
       host: process.env.DEV_SERVER_HOST || '0.0.0.0',
-      // Порт 9000: шлюз обычно на 8080; /api проксируется на VUE_APP_GATEWAY_URL
+      // Port 9000 for frontend dev; /api is proxied to VUE_APP_GATEWAY_URL (gateway).
       port: Number(process.env.DEV_SERVER_PORT) || 9000,
       proxy: {
         '/api': {
@@ -76,7 +76,7 @@ module.exports = configure(function (/* ctx */) {
           secure: false,
         },
       },
-      // В Vite watch — прямо на server, не devServer.server (иначе chokidar не подхватывается)
+      // Watch options must be on server (not devServer.server) so chokidar picks them up.
       watch: {
         usePolling: true,
         interval: 100,

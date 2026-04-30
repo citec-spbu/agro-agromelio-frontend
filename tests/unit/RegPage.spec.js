@@ -1,10 +1,10 @@
  import { mount } from '@vue/test-utils';
- import RegPage from '@/pages/RegPage.vue';  // Путь к компоненту
- import { postreg } from '@/axiosRequest';  // Путь к вашему запросу
- import { userStore } from '@/usage';  // Путь к вашему стору
+import RegPage from '@/pages/RegPage.vue';
+import { postreg } from '@/axiosRequest';
+import { userStore } from '@/usage';
  import { createRouter, createWebHistory } from 'vue-router';
 
-// Мокируем зависимости
+// Mock external dependencies.
 jest.mock('@/axiosRequest', () => ({
   postreg: jest.fn()
 }));
@@ -22,13 +22,13 @@ jest.mock('vue-router', () => ({
   })
 }));
 
-// Создаем мок роутер
+// Create a test router instance.
 const mockRouter = createRouter({
   history: createWebHistory(),
   routes: []
 });
 
-// Начинаем писать тесты
+// Registration page test suite.
 describe('RegPage.vue', () => {
   it('успешная регистрация перенаправляет пользователя на страницу входа', async () => {
     const wrapper = mount(RegPage, {
@@ -41,7 +41,7 @@ describe('RegPage.vue', () => {
     wrapper.vm.password = 'password123';
     wrapper.vm.role = 'organization';
 
-    // Обозначим что возвращает наш `postreg` запрос
+    // Configure successful registration response.
     postreg.mockResolvedValueOnce({
       id: 1,
       email: 'test@example.com',
@@ -77,7 +77,7 @@ describe('RegPage.vue', () => {
     wrapper.vm.email = '';
     wrapper.vm.password = '';
 
-    // Проверяем выброс ошибки
+    // Verify that validation error is thrown.
     expect(() => {
       wrapper.vm.readyClick();
     }).toThrow('не все данные введены');
@@ -95,10 +95,10 @@ describe('RegPage.vue', () => {
 
     postreg.mockRejectedValueOnce(new Error('серверная ошибка'));
 
-    // Имитируем нажатие
+    // Trigger submit action.
     await wrapper.vm.readyClick();
 
-    // Проверяем вызов функции обработки ошибок
+    // Verify that error handler is called.
     expect(userStore.setError).toHaveBeenCalledWith(new Error('серверная ошибка'));
   });
 });

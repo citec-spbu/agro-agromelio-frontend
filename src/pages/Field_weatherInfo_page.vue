@@ -4,7 +4,7 @@
       <q-card-section class="row items-center justify-between q-gutter-sm">
         <div>
           <div class="text-h6 text-weight-bold">Метеоданные поля</div>
-          <div class="text-caption text-grey-7">Период: предыдущие 15 дней - текущий день - следующие 15 дней</div>
+          <div class="text-caption text-grey-7">Период: {{ periodCaption }}</div>
         </div>
         <q-btn
           no-caps
@@ -20,6 +20,33 @@
         <div><strong>Сезон:</strong> {{ fieldInfo.seasonName }}</div>
         <div><strong>Поле:</strong> {{ fieldInfo.fieldName }}</div>
         <div v-if="currentData"><strong>Последнее обновление:</strong> {{ formatDateTime(currentData.date_time) }}</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <div class="meteo-filter-row">
+          <q-input
+            v-model="dateFromInput"
+            type="date"
+            dense
+            outlined
+            label="Дата с"
+            class="meteo-filter-input"
+          />
+          <q-btn
+            no-caps
+            color="primary"
+            label="Применить"
+            :loading="periodLoading"
+            @click="applyPeriodFilter"
+          />
+          <q-btn
+            no-caps
+            flat
+            color="primary"
+            label="Сбросить"
+            :disable="periodLoading"
+            @click="resetPeriodFilter"
+          />
+        </div>
       </q-card-section>
     </q-card>
 
@@ -106,6 +133,45 @@ export default {
     const timelineData = ref([]);
     const weatherError = ref(null);
     const refreshLoading = ref(false);
+    const periodLoading = ref(false);
+
+    const toIsoDate = (value) => {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const shiftDays = (baseDate, days) => {
+      const next = new Date(baseDate);
+      next.setDate(next.getDate() + days);
+      return next;
+    };
+
+    const today = new Date();
+    const addDaysToIsoDate = (isoDate, days) => {
+      const parsed = new Date(isoDate);
+      return toIsoDate(shiftDays(parsed, days));
+    };
+
+    const defaultStartDate = toIsoDate(shiftDays(today, -15));
+    const defaultEndDate = toIsoDate(shiftDays(today, 15));
+    const currentStartDate = ref(defaultStartDate);
+    const currentEndDate = ref(defaultEndDate);
+    const dateFromInput = ref(defaultStartDate);
+
+    const formatIsoDateForCaption = (isoDate) => {
+      if (!isoDate) return "-";
+      const parsed = new Date(isoDate);
+      return parsed.toLocaleDateString("ru-RU");
+    };
+
+    const periodCaption = computed(
+      () =>
+        `${formatIsoDateForCaption(currentStartDate.value)} - ${formatIsoDateForCaption(
+          currentEndDate.value
+        )}`
+    );
 
     const weatherChart = ref(null);
     const soilChart = ref(null);
@@ -439,7 +505,7 @@ export default {
       });
     };
 
-    const fetchMeteoData = async () => {
+    const fetchCurrentMeteoData = async () => {
       const url = `${process.env.VUE_APP_BASE_URL}/api/meteo/${fieldId.value}`;
       try {
         const response = await axios.get(url, {
@@ -449,11 +515,91 @@ export default {
           },
         });
         currentData.value = response.data.current || null;
+      } catch (error) {
+        weatherError.value = error.response ? error.response.data : { message: error.message };
+      }
+    };
+
+    const fetchMeteoDataByPeriod = async () => {
+      const url = `${process.env.VUE_APP_BASE_URL}/api/meteo/${fieldId.value}/period`;
+      try {
+        const response = await axios.get(url, {
+          params: {
+            start_date: currentStartDate.value,
+            end_date: currentEndDate.value,
+          },
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+            "Content-Type": "application/json",
+          },
+        });
         timelineData.value = response.data.timeline || [];
         weatherError.value = null;
         setTimeout(buildCharts, 0);
       } catch (error) {
+        const statusCode = error?.response?.status;
+        if (statusCode === 404) {
+          await fetchMeteoDataByPeriodFallback();
+          return;
+        }
         weatherError.value = error.response ? error.response.data : { message: error.message };
+      }
+    };
+
+    const fetchMeteoDataByPeriodFallback = async () => {
+      const url = `${process.env.VUE_APP_BASE_URL}/api/meteo/${fieldId.value}`;
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const timeline = response.data.timeline || [];
+        timelineData.value = timeline.filter((item) => {
+          const pointDate = toIsoDate(new Date(item.date_time));
+          return pointDate >= currentStartDate.value && pointDate <= currentEndDate.value;
+        });
+        weatherError.value = null;
+        setTimeout(buildCharts, 0);
+      } catch (fallbackError) {
+        weatherError.value = fallbackError.response
+          ? fallbackError.response.data
+          : { message: fallbackError.message };
+      }
+    };
+
+    const fetchMeteoData = async () => {
+      await Promise.all([fetchCurrentMeteoData(), fetchMeteoDataByPeriod()]);
+    };
+
+    const applyPeriodFilter = async () => {
+      if (!dateFromInput.value) {
+        $q.notify({
+          type: "warning",
+          message: "Укажите дату начала периода",
+        });
+        return;
+      }
+      currentStartDate.value = dateFromInput.value;
+      currentEndDate.value = addDaysToIsoDate(dateFromInput.value, 30);
+      periodLoading.value = true;
+      try {
+        await fetchMeteoDataByPeriod();
+      } finally {
+        periodLoading.value = false;
+      }
+    };
+
+    const resetPeriodFilter = async () => {
+      dateFromInput.value = defaultStartDate;
+      currentStartDate.value = defaultStartDate;
+      currentEndDate.value = defaultEndDate;
+      periodLoading.value = true;
+      try {
+        await fetchMeteoDataByPeriod();
+      } finally {
+        periodLoading.value = false;
       }
     };
 
@@ -501,8 +647,13 @@ export default {
       timelineData,
       weatherError,
       refreshLoading,
+      periodLoading,
       soilGapStartLabel,
+      dateFromInput,
+      periodCaption,
       refreshMeteoData,
+      applyPeriodFilter,
+      resetPeriodFilter,
       formatDateTime,
       formatTime,
       formatValue,
@@ -588,6 +739,17 @@ export default {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.meteo-filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.meteo-filter-input {
+  min-width: 180px;
 }
 
 .chart-card canvas {

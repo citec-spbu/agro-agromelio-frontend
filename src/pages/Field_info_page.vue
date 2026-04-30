@@ -306,20 +306,19 @@ try {
 }
 };
 
-    //change field info
+    // Navigate to field edit page.
     const goBackToAddField = () => {
       const currentFieldId = route.query.fieldId;
       router.push({ path: "/fetch_field", query: { id: currentFieldId } });
       console.log(currentFieldId);
     };
-    //change soil info
+    // Navigate to soil edit page.
     const goToFetchSoil = () => {
       const currentFieldId2 = route.query.fieldId;
       router.push({ path: "/fetch_soil", query: { id: currentFieldId2 } });
       console.log(currentFieldId2);
     };
 
-    //сulture
     const seedData = reactive([]);
     const seedColums = reactive([
       {
@@ -337,7 +336,6 @@ try {
         field: "end_date",
       },
     ]);
-    //humidity data form
     const humidityChartData = reactive({
       labels: [],
       datasets: [
@@ -350,7 +348,6 @@ try {
         },
       ],
     });
-    //pressure data form
     const pressureChartData = reactive({
       labels: [],
       datasets: [
@@ -363,7 +360,6 @@ try {
         },
       ],
     });
-    //temperature data form
     const temperatureChartData = reactive({
       labels: [],
       datasets: [
@@ -376,7 +372,6 @@ try {
         },
       ],
     });
-    //identify chart form
     const chartOptions = reactive({
       responsive: true,
       maintainAspectRatio: false,
@@ -423,11 +418,9 @@ try {
         options: chartOptions,
       });
     };
-    //ensure chart initialize well
     const debouncedinitHumidityChart = debounce(initHumidityChart, 100);
     const debouncedinitPressureChart = debounce(initPressureChart, 100);
     const debouncedinitTemperatureChart = debounce(initTemperatureChart, 100);
-    //click button and change chart type
     const toggleHumidityChartType = () => {
       isHumidityBarChart.value = !isHumidityBarChart.value;
       debouncedinitHumidityChart();
@@ -443,7 +436,6 @@ try {
       debouncedinitTemperatureChart();
     };
 
-    //button showing crop rotation
     const cropRotationComposition = async () => {
       isCropVisible.value = !isCropVisible.value;
     };
@@ -542,7 +534,6 @@ try {
       router.push({ path: "/fetch_rotation_field", query: { id: rowId } });
     }
 
-    //button showing chemical element
     const soilData = reactive([]);
     const soilData2 = reactive([]);
     const soilData3 = reactive([]);
@@ -623,15 +614,11 @@ try {
       isSoilVisible.value = !isSoilVisible.value;
     };
 
-    //map
-
     onMounted(async () => {
       initHumidityChart();
       initPressureChart();
       initTemperatureChart();
       fetchMeteoData();
-
-      // Создание карты
 
       const fieldId = route.query.fieldId;
 

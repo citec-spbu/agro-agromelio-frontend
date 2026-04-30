@@ -541,7 +541,7 @@ export default {
 </style>
 
 <style>
-/* Тёмная тема: панель и чипы сезон/поле должны оставаться читаемыми */
+/* Dark theme: keep panel and season/field chips readable. */
 .body--dark .control-panel {
   background: rgba(28, 36, 50, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.14);

@@ -543,7 +543,7 @@ export default {
     const clearPolygons = () => {
       map.value.eachLayer((layer) => {
         if (layer instanceof L.Polygon) {
-          // Проверяем, является ли слой полигоном
+          // Check that the layer is a polygon.
           map.value.removeLayer(layer);
         }
       });
@@ -587,7 +587,7 @@ export default {
           console.log("contoures got ", response.data);
           const contours = response.data;
 
-          // Используем for...of для обработки асинхронных данных
+          // Use for...of to handle async operations sequentially.
           for (const contour of contours) {
             const coordinates = contour.coordinates.map((coord) => [
               coord.latitude,
@@ -614,7 +614,7 @@ export default {
       }
     };
 
-    // Отмена выбора цвета
+    // Clear selected contour color.
     const cancelColorSelection = () => {
       if (isContourSaving.value) return;
       if (currentLayer) {
@@ -667,7 +667,7 @@ export default {
       const updatedActiveField = { ...activeFieldRaw, id: fieldId };
       sessionStorage.setItem("activeField", JSON.stringify(updatedActiveField));
       if (selectedField.value) {
-        // Важно: не заменяем весь объект, чтобы не триггерить перерисовку карты и не "гасить" свежий контур.
+        // Do not replace the whole object to avoid map rerender and contour flicker.
         selectedField.value.id = fieldId;
         selectedField.value.name = updatedActiveField.name;
         selectedField.value.description = updatedActiveField.description;
@@ -826,7 +826,7 @@ export default {
       }
     };
 
-    //при нажатии на кнопку добавления контура в DropdownOrAddSeasonFieldButtons, рисовать полигон
+    // Start polygon drawing when contour-add action is triggered.
     let drawControl = null;
     let drawnHandler = null; // Объявляем переменную для обработчика
     let drawStopHandler = null;
@@ -913,11 +913,11 @@ export default {
             polygonIsFinished.value = false;
             console.log("start of draw");
             const layer = event.layer;
-            // добавляем чтобы можно было дать имя полигону
+            // Store pending polygon so user can assign a contour name.
             layer.feature = layer.feature || { type: "Feature" };
             layer.feature.properties = layer.feature.properties || {};
             layer.feature.properties.name = ""; // Временное пустое имя
-            // Добавляем обработчик клика на полигон
+            // Add click handler to polygon.
             layer.on("click", () => {
               if (isDrawInProgress()) return;
               if (!isEditMode.value) return;
@@ -940,7 +940,7 @@ export default {
             );
 
             let isOverlap = false;
-            // При создании нового полигона проверяется, не пересекается ли он с существующими:
+            // While creating a polygon, validate intersections with existing contours.
             function checkIntersection(existingPolygon, newPolygon) {
               if (
                 existingPolygon.geometry &&
@@ -953,7 +953,7 @@ export default {
                   existingPolygon.geometry.coordinates
                 );
 
-                // Проверяем пересечение
+                // Check intersection.
 
                 if(turf.booleanOverlap(turfNew, turfExisting)){
                   console.log("Пересечение найдено!");
@@ -963,16 +963,16 @@ export default {
               return false;
             }
 
-            // Проходимся по нарисованным элементам
+            // Iterate over drawn layers.
             drawnItems.eachLayer((existingLayer) => {
               const existingPolygon = existingLayer.toGeoJSON();
               if (checkIntersection(existingPolygon, newPolygon)) {
                 isOverlap = true;
               }
             });
-            // Проходимся по слоям карты
+            // Iterate over map layers.
             map.value.eachLayer((existingLayer) => {
-              // Проверяем только полигоны
+              // Check polygons only.
               if (
                 existingLayer instanceof L.Polygon &&
                 existingLayer !== newPolygon
@@ -1004,12 +1004,12 @@ export default {
             currentLayer = layer;
             selectedColor.value = layer.options.fillColor || "#2f6fdd";
             contourName.value = getDefaultContourName();
-            // передаем сообщение о том что рисование было закончено из-за того что замкнули полигон, и не нужно нажимать на кнопку, чтобы выключить его
+            // Notify parent that drawing finished after polygon closure.
             polygonIsFinished.value = true;
             colorDialog.value = true;
           };
 
-          // Начало рисования полигона
+          // Start polygon drawing.
           map.value.on("draw:drawstart", (e) => {
             if (e.layerType === "polygon") {
               currentLayer = e.layer; // Сохраняем текущий слой
@@ -1133,21 +1133,21 @@ export default {
     };
 
     const undoLastAction = () => {
-      // если есть маркеры на карте удаляем последнюю точку
+      // Remove last point if marker list is not empty.
       if (
         drawControl &&
         drawControl._markers &&
         drawControl._markers.length > 0
       ) {
         console.log("delete last painted point");
-        // Удаляем последнюю маркерную точку из массива
+        // Drop last marker point from array.
         const lastMarker = drawControl._markers.pop();
         drawControl._markerGroup.removeLayer(lastMarker);
-        // Обновляем полигон на карте, удаляя последнюю точку
+        // Update polygon by removing the last point.
         const latlngs = drawControl._markers.map((marker) =>
           marker.getLatLng()
         );
-        // Обновляем отрисовку полигона
+        // Refresh polygon rendering.
         drawControl._poly.setLatLngs(latlngs);
       } else {
         console.log("нет действий для отмены");
@@ -1165,7 +1165,7 @@ export default {
         return;
       }
 
-      // преобразовываем координаты и имена контуров в массив
+      // Convert contour coordinates and names into API payload array.
       const contours = [];
       drawnItems.eachLayer(async (layer) => {
         if (layer instanceof L.Polygon) {
@@ -1202,7 +1202,7 @@ export default {
             }
           } else {
             const geoJson = layer.toGeoJSON();
-            // Извлекаем координаты из GeoJSON
+            // Extract coordinates from GeoJSON.
             let coordinates = geoJson.geometry.coordinates[0].map((coord) => ({
               longitude: coord[0], // lng
               latitude: coord[1], // lat
@@ -1218,7 +1218,7 @@ export default {
         }
       });
       if (contours.length > 0) {
-        // если у поля есть айди то добавляем к существующему полю контуры
+        // If field has ID, append contours to existing field.
         if (selectedField.value.id) {
           contours.forEach(async (contour) => {
             try {
@@ -1237,7 +1237,7 @@ export default {
                 response.data["id"]
               );
 
-              //мб можно добавить сразу айди к контуру
+              // Could assign contour ID immediately here if needed.
 
               $q.notify({
                 type: "positive",
@@ -1277,17 +1277,17 @@ export default {
             );
             console.log("Контура успешно отправлены:", response.data["id"]);
 
-            //в fields в sessionStorage убираем отправленное поле
+            // Remove submitted field from sessionStorage list.
             const fields = JSON.parse(sessionStorage.getItem("fields") || "[]");
             const activeField = JSON.parse(
               sessionStorage.getItem("activeField") || "[]"
             ); // Пример activeField с id
 
-            // Удаляем объект, где id совпадает с activeField.id
+            // Remove object where ID matches activeField.id.
             const updatedFields = fields.filter(
               (field) => field["name"] !== activeField["name"]
             );
-            // Сохраняем обновленный массив в sessionStorage и добавляем id к activeField
+            // Save updated list to sessionStorage and add ID to activeField.
             sessionStorage.setItem("fields", JSON.stringify(updatedFields));
             sessionStorage.setItem(
               "activeField",
@@ -1343,7 +1343,7 @@ export default {
             }
           }
         }
-        //  проверка нужно ли удалять поле (если удаляются все контуры)
+        // Remove field when all contours are deleted.
         let hasPolygonsOnMap = false;
         map.value.eachLayer((layer) => {
           if (layer instanceof L.Polygon) {
@@ -1384,7 +1384,7 @@ export default {
         ? JSON.parse(sessionStorage.getItem("activeField"))
         : null;
     };
-    // Watch для обработки изменений activeField
+    // Watch activeField changes.
     watch(selectedField, (newValue) => {
       if (skipSelectedFieldWatcher.value) {
         skipSelectedFieldWatcher.value = false;
@@ -1408,23 +1408,23 @@ export default {
         JSON.parse(sessionStorage.getItem("activeField")) || null;
       applyLeafletDrawRuLocale();
 
-      // Создание карты
+      // Initialize map.
       map.value = L.map("map").setView([59.420161, 30.01832], 15); //[широта, долгота], уровень_масштаба
-      // Добавление тайлового слоя
+      // Add tile layer.
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "Map data &copy; OpenStreetMap contributors",
       }).addTo(map.value);
 
       map.value.addLayer(drawnItems);
 
-      // 加载已有多边形 Загрузка существующих полигонов
+      // Load existing polygons.
       if (
         selectedSeason.value &&
         selectedField.value &&
         selectedField.value.id
       ) {
         fetchDataAndDrawPolygons();
-        //если изменяется activeField sessionStorage тогда удаляются/рисуются полигоны
+        // Redraw polygons when activeField changes in sessionStorage.
       }
       updateContoursPresence();
     });
@@ -1846,7 +1846,7 @@ export default {
 }
 
 .details-button:hover {
-  background-color: #0056b3; /* Цвет фона кнопки при наведении */
+  background-color: #0056b3; /* Hover button background color */
 }
 
 .dzz-action {
