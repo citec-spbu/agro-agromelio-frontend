@@ -1,0 +1,15 @@
+[
+  {
+    "id": "analytics",
+    "route": "/analytics",
+    "tag": "agro-analytics-mf",
+    "entry": "/analytics-mf.js",
+    "style": "/style.css",
+    "version": "1.0.0",
+    "featureFlags": {
+      "requiresAuth": true,
+      "supportsThemeSync": true,
+      "supportsShellContextEvent": true
+    }
+  }
+]

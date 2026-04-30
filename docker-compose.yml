@@ -12,8 +12,10 @@ services:
     # ходить на сервис gateway в той же сети (container_name из agro-api-gateway/docker-compose.yml).
     environment:
       VUE_APP_GATEWAY_URL: http://api-gateway:8080
-      # В iframe грузится из браузера пользователя (не из контейнера). Нужен проброс 9001 у agro-analytics-frontend.
+      # Web Component микрофронт загружается из браузера пользователя (не из контейнера).
       VUE_APP_ANALYTICS_MFE_URL: http://localhost:9001
+      # Для realtime разработки всегда используем Vite dev-entry (HMR/live reload).
+      VUE_APP_ANALYTICS_MFE_ENTRY_URL: http://localhost:9001/src/mf-element.js
     networks:
       - agronetwork
 
