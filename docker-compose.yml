@@ -1,0 +1,26 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 9000:9000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    # Внутри контейнера localhost:8080 — это не шлюз. Прокси Quasar (см. quasar.config.js) должен
+    # ходить на сервис gateway в той же сети (container_name из agro-api-gateway/docker-compose.yml).
+    environment:
+      VUE_APP_GATEWAY_URL: http://api-gateway:8080
+      # Web Component микрофронт загружается из браузера пользователя (не из контейнера).
+      VUE_APP_ANALYTICS_MFE_URL: http://localhost:9001
+      # Для realtime разработки всегда используем Vite dev-entry (HMR/live reload).
+      VUE_APP_ANALYTICS_MFE_ENTRY_URL: http://localhost:9001/src/mf-element.js
+      VUE_APP_IOT_DASHBOARD_URL: http://localhost:9002
+      VUE_APP_IOT_API_BASE_URL: http://localhost:8080
+    networks:
+      - agronetwork
+
+networks:
+  agronetwork:
+    external: true
