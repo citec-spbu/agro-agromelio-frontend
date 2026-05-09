@@ -1,0 +1,38 @@
+# Прод-сборка: Quasar build → статический Nginx.
+# По умолчанию билд ходит на /api с того же origin, где раздаётся фронт (smart.agromelio.ru),
+# а микрофронт аналитики — same-origin под /analytics-static/.
+# Эти URL вшиваются в бандл на этапе build, поэтому передавайте их как build-args.
+#
+# Локальная сборка:
+#   docker build -f Dockerfile.prod \
+#     --build-arg VUE_APP_BASE_URL=http://smart.agromelio.ru \
+#     --build-arg VUE_APP_ANALYTICS_MFE_URL=http://smart.agromelio.ru/analytics-static \
+#     --build-arg VUE_APP_ANALYTICS_MFE_ENTRY_URL=http://smart.agromelio.ru/analytics-static/analytics-mf.js \
+#     -t agromelio-frontend:test-agromelio .
+
+# ----------- 1. Сборка SPA ---------------------------------------------------
+FROM node:20-bookworm-slim AS build
+WORKDIR /app
+
+ARG VUE_APP_BASE_URL=
+ARG VUE_APP_ANALYTICS_MFE_URL=
+ARG VUE_APP_ANALYTICS_MFE_ENTRY_URL=
+
+ENV VUE_APP_BASE_URL=${VUE_APP_BASE_URL} \
+    VUE_APP_ANALYTICS_MFE_URL=${VUE_APP_ANALYTICS_MFE_URL} \
+    VUE_APP_ANALYTICS_MFE_ENTRY_URL=${VUE_APP_ANALYTICS_MFE_ENTRY_URL}
+
+COPY package*.json ./
+RUN npm ci || npm install
+
+COPY . .
+
+# Quasar build — собирает SPA в dist/spa.
+RUN npx quasar build
+
+# ----------- 2. Раздача статики --------------------------------------------
+FROM nginx:1.27-alpine
+COPY nginx-prod.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist/spa /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
