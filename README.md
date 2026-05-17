@@ -20,7 +20,9 @@ docker compose up -d --build
 
 Ключевые переменные:
 - `VUE_APP_GATEWAY_URL` - URL API gateway;
-- `VUE_APP_ANALYTICS_MFE_URL` - URL аналитического микрофронта.
+- `VUE_APP_ANALYTICS_MFE_URL` - URL аналитического микрофронта;
+- `VUE_APP_IOT_DASHBOARD_URL` - публичный URL отдельного IoT dashboard для iframe;
+- `VUE_APP_IOT_API_BASE_URL` - публичный base URL gateway, который передается dashboard.
 
 ## Полезные команды
 ```bash
