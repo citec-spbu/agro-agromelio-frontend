@@ -277,51 +277,78 @@ export default {
         closeDeleteContourDialog();
       }
     };
+    const getSelectedSeasonAndField = () => {
+      const season = JSON.parse(sessionStorage.getItem("activeSeason") || "null");
+      const field = JSON.parse(sessionStorage.getItem("activeField") || "null");
+
+      if (!season?.id || !field?.id) {
+        $q.notify({
+          type: "warning",
+          message: "Сначала выберите сезон и поле.",
+        });
+        return null;
+      }
+
+      return { season, field };
+    };
+
     const handleContourPopupClick = (contour) => {
+      const selection = getSelectedSeasonAndField();
+      if (!selection) return;
+      const { season, field } = selection;
+
       console.log(
         contour,
         `{
-            "seasonId": ${selectedSeason.value.id},
-            "seasonName": ${selectedSeason.value.name},
-            "fieldId": ${selectedField.value.id},
-            "fieldName": ${selectedField.value.name},
+            "seasonId": ${season.id},
+            "seasonName": ${season.name},
+            "fieldId": ${field.id},
+            "fieldName": ${field.name},
             "contourId": ${contour.id},
             "contourName": ${contour.name}
           }`
       );
       router.push(
         `/rotation?seasonId=${encodeURIComponent(
-          selectedSeason.value.id
+          season.id
         )}&seasonName=${encodeURIComponent(
-          selectedSeason.value.name
+          season.name
         )}&fieldId=${encodeURIComponent(
-          selectedField.value.id
+          field.id
         )}&fieldName=${encodeURIComponent(
-          selectedField.value.name
+          field.name
         )}&contourId=${encodeURIComponent(
           contour.id
         )}&contourName=${encodeURIComponent(contour.name)}`
       );
     };
     const handleFieldPopupClick = () => {
+      const selection = getSelectedSeasonAndField();
+      if (!selection) return;
+      const { season, field } = selection;
+
       router.push({
         name: 'FieldWeatherInfoPage',
         query: {
-          seasonId: selectedSeason.value.id,
-          seasonName: selectedSeason.value.name,
-          fieldId: selectedField.value.id,
-          fieldName: selectedField.value.name,
+          seasonId: season.id,
+          seasonName: season.name,
+          fieldId: field.id,
+          fieldName: field.name,
         }
       });
     };
     const handleFieldDzzPopupClick = () => {
+      const selection = getSelectedSeasonAndField();
+      if (!selection) return;
+      const { season, field } = selection;
+
       router.push({
         name: 'FieldDzzInfoPage',
         query: {
-          seasonId: selectedSeason.value.id,
-          seasonName: selectedSeason.value.name,
-          fieldId: selectedField.value.id,
-          fieldName: selectedField.value.name,
+          seasonId: season.id,
+          seasonName: season.name,
+          fieldId: field.id,
+          fieldName: field.name,
         }
       });
     };
